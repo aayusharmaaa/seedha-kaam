@@ -60,15 +60,46 @@ export function LanguageSwitch({ compact }) {
   );
 }
 
+/**
+ * The mark is the argument in one glyph.
+ *
+ * Two paths leave the same point and arrive at the same point. One arcs the
+ * long way round — the detour through somebody who says they know a person.
+ * The other goes straight through. *Seedha* means straight, and that is the
+ * only claim this product makes.
+ *
+ * The wordmark is deliberately bilingual: "Seedha" in Latin, "काम" in
+ * Devanagari. It is a Hindi phrase, it should look like one, and a wordmark
+ * that romanises itself into English would be arguing against its own point.
+ */
+export function BrandMark({ size = 30 }) {
+  return (
+    <svg
+      className="brand-glyph"
+      viewBox="0 0 32 32"
+      width={size}
+      height={size}
+      role="img"
+      aria-label="Seedha Kaam"
+      focusable="false"
+    >
+      <rect width="32" height="32" rx="9" className="glyph-bg" />
+      {/* the long way round */}
+      <path d="M7 20.5C9.5 8.5 20.5 8.5 24 18.5" className="glyph-detour" fill="none" strokeWidth="2" strokeLinecap="round" strokeDasharray="2.6 3.2" />
+      {/* seedha — straight through */}
+      <path d="M7 20.5h14.5" className="glyph-straight" fill="none" strokeWidth="3" strokeLinecap="round" />
+      <path d="m18.5 16.8 4.2 3.7-4.2 3.7" className="glyph-straight" fill="none" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function Brand({ small }) {
   return (
-    <a className={`brand ${small ? 'small' : ''}`} href="#/">
-      <span className="brand-mark" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M4 12h13M12 5l7 7-7 7" />
-        </svg>
+    <a className={`brand ${small ? 'small' : ''}`} href="#/" aria-label="Seedha Kaam — home">
+      <BrandMark size={small ? 26 : 30} />
+      <span className="brand-word">
+        Seedha<em lang="hi">काम</em>
       </span>
-      <span className="brand-word">Seedha<em>Kaam</em></span>
     </a>
   );
 }

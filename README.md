@@ -1,6 +1,9 @@
-# Seedha Kaam
+# Seedha काम
 
 **Khata transfer without a middleman.** *Sarkari kaam, seedha.*
+
+> “Papers sariyilla.” Four words at a counter, and nobody will say which paper or
+> which line. That vagueness is the product being sold. This tells you first.
 
 An independent prototype for one Bengaluru problem: transferring a property khata
 after an inheritance or a purchase, without paying somebody ₹3,000–₹15,000 to be
@@ -73,7 +76,9 @@ the citizen as an editable field before a single rule runs. The verdict itself
 comes from a versioned rule pack, and every verdict carries a **"why this answer"**
 expander showing the rule id, the documents that disagreed, the exact field, and
 the source of the requirement — including when that source is marked *not traced
-to a published clause*, because three of them are.
+to a published clause*, which twelve of the forty-seven are. Two of those twelve
+are **blocking**, which is the uncomfortable case: the product tells you that you
+will be turned away on a ground it cannot cite, and says so in those words.
 
 **Credentials are never the mechanism.** There is no field anywhere in this
 product for a government portal password or OTP, and no code path that would

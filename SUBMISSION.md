@@ -2,31 +2,34 @@
 
 ## Project summary (249 words)
 
-Forty per cent of bribes paid in India are for property and land work. But most
-people paying aren't buying an unfair advantage — 38% say it was the only way to
-get their work done. That's not a moral problem. It's a friction problem.
+“Papers sariyilla.” Four words at a Bengaluru counter, and nobody will say which
+paper, or which line. That vagueness is the product, and it is worth
+₹3,000–₹15,000 to somebody every time.
 
-Seedha Kaam removes the friction that makes agents necessary, starting with khata
-transfer in Bengaluru, where BBMP's replacement by five corporations has left
-citizens unable to identify their own office.
+Forty per cent of India's bribes are for property and land. But 38% of those who
+paid say it was the only way to get their work done. That is not a moral problem.
+It is a friction problem.
 
-Speak in Kannada, Hindi or English. We resolve which corporation you're in — and
-when your address sits near a boundary, we name both offices rather than guess.
-Upload your documents and 46 deterministic rules check them against the notified
-requirements, cross-matching names, survey numbers and tax continuity. "Documents
-not in order" stops working as a pretext when you're holding a report naming the
-rule, the two documents that disagreed and the exact field.
+Seedha काम removes that friction, starting with khata transfer in Bengaluru, where
+BBMP's replacement by five corporations has left citizens unable to identify their
+own office.
 
-Then we attach Karnataka's statutory deadline to your acknowledgement number. On
-breach, the appeal auto-drafts with correct date arithmetic. You write nothing.
+Speak in Kannada, Hindi or English. We resolve which corporation you're in, and
+near a boundary we name both offices rather than guess. Upload your documents and
+46 deterministic rules check them against the notified requirements, cross-matching
+names, survey numbers and tax continuity. "Not in order" stops working as a
+pretext when you hold a report naming the rule, the two documents that disagreed
+and the exact field.
+
+Then Karnataka's statutory deadline attaches to your acknowledgement number. On
+breach the appeal auto-drafts with correct date arithmetic. You write nothing.
 The clock does what a bribe used to.
 
-Rules decide; the model only reads photos into fields you confirm. We never
-store credentials or touch a government system — you submit, we prepare and track.
+Rules decide; the model only reads photos into fields you confirm. We never store
+credentials or touch a government system — you submit, we prepare and track.
 
-Records are synthetic and all fourteen mocks are listed at /mocks. Adding a
-service means authoring a rule file, not writing a scraper — and every completed
-case feeds an anonymised, office-level index, never naming individuals.
+Records are synthetic; all fourteen mocks are listed at /mocks. Adding a service
+means authoring a rule file, not writing a scraper.
 
 ₹499, or an agent's ₹6,000. Same outcome.
 
@@ -40,9 +43,10 @@ Phone-sized viewport, network throttled and visible.
 
 | ~sec | Beat |
 |---|---|
-| 0:00 | Land. Type **Domlur** into the hero lookup. It returns a **boundary case**: two offices, which to try first. *"This is the answer a tout charges for. It's free, before I've entered anything."* |
-| 0:12 | Open Lakshmi's case. Speak the Kannada-English line: *"naanu appa house-na khata transfer maadbeku…"* The parse appears — inheritance, sale-blocked, Brookefield — with the matched cues shown. |
-| 0:25 | Office resolves: Bengaluru East, Mahadevapura zone. |
+| 0:00 | Land on the hook — the counter's own sentence, full-bleed: **"Papers sariyilla."** *"Four words. No counter will ever tell you which paper, or which line."* |
+| 0:06 | Type **Domlur** into the hero lookup. It returns a **boundary case**: two offices, which to try first. *"That is the answer a tout charges for. It is free, before I have entered anything."* |
+| 0:14 | Open Lakshmi's case. Speak the Kannada-English line: *"naanu appa house-na khata transfer maadbeku…"* The parse appears — inheritance, sale-blocked, Brookefield — with the matched cues shown. |
+| 0:26 | Office resolves: Bengaluru East, Mahadevapura zone. |
 | 0:32 | Run the check. **2 blocking, 1 objection, 5 worth knowing.** Tap read-aloud in Kannada. |
 | 0:42 | **The line:** *"An agent would have told me my papers are 'not in order' and quoted ₹6,000. Here is exactly what's wrong, who fixes it, and how many days."* |
 | 0:52 | Scroll to **"What we deliberately did NOT flag."** *"The deed says Ramesh Murthy, the khata says M. Ramesh. A careless check calls that a mismatch and sends you to a notary. We matched them and said so."* |

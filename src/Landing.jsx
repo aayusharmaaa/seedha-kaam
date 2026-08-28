@@ -36,7 +36,7 @@ function OfficeLookup() {
   return (
     <div className="lookup">
       <div className="lookup-head">
-        <span className="lookup-tag">Free · no sign-in · answers in one second</span>
+        <span className="lookup-tag">{t('lookup.tag')}</span>
         <h2>{t('lookup.title')}</h2>
         <p>{t('lookup.sub')}</p>
       </div>
@@ -56,10 +56,16 @@ function OfficeLookup() {
         <Button type="submit" busy={busy}>{busy ? t('lookup.trying') : t('lookup.button')}</Button>
       </form>
 
+      {/* Place names stay as they are written on a document. The last chip is a
+          deliberate one: the resolver refusing to answer is as much a feature as
+          the resolver answering, so it gets a button of its own. */}
       <div className="lookup-chips">
-        {['Brookefield', 'Domlur', 'Yelahanka', 'Electronic City', 'a place we do not know'].map((chip) => (
+        {['Brookefield', 'Domlur', 'Yelahanka', 'Electronic City'].map((chip) => (
           <button key={chip} type="button" onClick={() => { setValue(chip); run(chip); }}>{chip}</button>
         ))}
+        <button type="button" className="chip-unknown" onClick={() => { setValue('behind the big tree'); run('behind the big tree'); }}>
+          {t('lookup.unknownChip')}
+        </button>
       </div>
 
       {error && <p className="lookup-error">{error}</p>}
@@ -379,15 +385,30 @@ export default function Landing({ meta, onStart, starting }) {
     <>
       <SiteNav />
 
+      {/*
+        The hook is the sentence itself.
+        Every person this is built for has stood at a counter and heard it, and
+        the whole product is the answer to the question it refuses to answer.
+        So the sentence leads, in the language the reader chose, and the turn
+        underneath it is the promise.
+      */}
       <section className="hero">
         <div className="hero-copy">
           <span className="hero-eyebrow">{t('hero.eyebrow')}</span>
-          <h1>
-            <span>{t('hero.h1a')}</span>
-            <span className="hero-strike">{t('hero.h1b')}</span>
-            <span className="hero-turn">{t('hero.h1c')}</span>
+
+          <h1 className="hero-quote">
+            <span className="quote-open" aria-hidden="true">&ldquo;</span>
+            <span className="quote-text">{t('hero.quote')}</span>
+            <span className="quote-close" aria-hidden="true">&rdquo;</span>
           </h1>
+          <p className="hero-gloss">{t('hero.gloss')}</p>
+
+          <p className="hero-turn">
+            {t('hero.turnLead')} <strong>{t('hero.turn')}</strong>
+          </p>
+
           <p className="hero-sub">{t('hero.sub')}</p>
+
           <div className="hero-actions">
             <Button kind="primary big" onClick={() => onStart('lakshmi')} busy={starting === 'lakshmi'}>
               {t('hero.cta')} <span aria-hidden="true">→</span>
@@ -395,6 +416,7 @@ export default function Landing({ meta, onStart, starting }) {
             <a className="btn ghost big" href="#lookup">{t('hero.secondary')}</a>
           </div>
           <span className="hero-microcopy">{t('hero.ctaSub')}</span>
+          <p className="hero-who">{t('hero.who')}</p>
         </div>
         <div className="hero-lookup" id="lookup"><OfficeLookup /></div>
       </section>

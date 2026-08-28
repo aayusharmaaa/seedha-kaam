@@ -1,5 +1,5 @@
 /* ==================================================================
-   Seedha Kaam — design system
+   Seedha काम — design system
 
    Built mobile-first and tested down to 320px. Type is set in rem so a
    citizen who has enlarged their system font gets a larger interface rather
@@ -29,8 +29,13 @@
   --shadow-lg: 0 2px 4px rgba(16,32,29,.06), 0 28px 60px -24px rgba(16,32,29,.28);
 
   --serif: "Playfair Display", Georgia, "Times New Roman", serif;
-  --sans:  "DM Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Per-glyph fallback: DM Sans covers Latin, then Kannada, then Devanagari.
+     Without the Noto faces the Indic UI is left to whatever the device
+     happens to ship, which on desktop is frequently nothing good. */
+  --sans:  "DM Sans", "Noto Sans Kannada", "Noto Sans Devanagari", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono:  "DM Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --deva:  "Noto Sans Devanagari", "Nirmala UI", "Mangal", system-ui, sans-serif;
+  --knda:  "Noto Sans Kannada", "Nirmala UI", "Tunga", system-ui, sans-serif;
 
   --wrap: 1180px;
 }
@@ -97,13 +102,25 @@ button:disabled { cursor: not-allowed; opacity: .5; }
   gap: 1rem; padding: 1rem 1.15rem;
 }
 .brand { display: inline-flex; align-items: center; gap: .55rem; text-decoration: none; color: var(--ink); }
-.brand-mark {
-  display: grid; place-items: center; width: 30px; height: 30px; flex: none;
-  border-radius: 9px; background: var(--deep); color: var(--lime);
+.brand-glyph { flex: none; display: block; }
+.glyph-bg { fill: var(--deep); }
+.glyph-detour { stroke: #6f8f7d; }
+.glyph-straight { stroke: var(--lime); }
+
+/* "Seedha" in Latin, "काम" in Devanagari. Devanagari sits on a headline
+   (shirorekha) rather than a baseline, so it needs its own optical size and a
+   nudge to align with the Latin cap-height beside it. */
+.brand-word { font: 700 1.12rem/1 var(--sans); letter-spacing: -.035em; white-space: nowrap; }
+.brand-word em {
+  font-family: var(--deva); font-style: normal; font-weight: 700;
+  color: var(--deep-2); margin-left: .3em; font-size: .94em;
+  letter-spacing: 0; position: relative; top: .04em;
 }
-.brand-word { font: 700 1.12rem/1 var(--sans); letter-spacing: -.04em; }
-.brand-word em { font-style: normal; color: var(--deep-2); margin-left: .22em; }
 .brand.small .brand-word { font-size: 1rem; }
+
+/* Dark surfaces the wordmark sits on. */
+.evidence .brand-word, .arch .brand-word, .closer .brand-word { color: #eee9dd; }
+.evidence .brand-word em, .arch .brand-word em, .closer .brand-word em { color: var(--lime); }
 
 .nav-toggle {
   border: 1px solid var(--line-2); background: var(--card);
@@ -212,20 +229,42 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 .hero { max-width: var(--wrap); margin: 0 auto; padding: 1.5rem 1.15rem 3rem; display: grid; gap: 2.2rem; }
 .hero-eyebrow { display: block; font: 500 .74rem/1 var(--mono); letter-spacing: .13em; text-transform: uppercase; color: var(--deep-2); margin-bottom: 1.1rem; }
 
-.hero h1 { font-family: var(--serif); font-weight: 600; font-size: clamp(2.15rem, 8.5vw, 4.3rem); line-height: 1.02; letter-spacing: -.035em; }
-.hero h1 span { display: block; }
-.hero-strike { position: relative; width: fit-content; color: var(--ink); }
-.hero-strike::after {
-  content: ""; position: absolute; left: -.02em; right: -.02em; top: 54%; height: .075em;
-  background: var(--rust); transform-origin: left center;
-  animation: strike .7s cubic-bezier(.2,.8,.3,1) .5s both;
+/* The hook.
+   The counter's sentence is set as an oversized pull-quote with hanging quote
+   marks, then glossed, then answered. The quote is the largest thing on the
+   page because it is the thing every reader recognises. */
+.hero-quote {
+  position: relative;
+  font-family: var(--serif); font-style: italic; font-weight: 600;
+  font-size: clamp(2.5rem, 10.5vw, 5rem); line-height: 1.02; letter-spacing: -.035em;
+  margin: 0; color: var(--ink);
+  animation: quote-in .55s cubic-bezier(.2,.75,.3,1) both;
 }
-@keyframes strike { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-.hero-turn { color: var(--deep); font-style: italic; }
+@keyframes quote-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.hero-quote :lang(kn) { font-family: var(--knda); font-style: normal; font-size: .84em; letter-spacing: -.01em; }
+.hero-quote :lang(hi) { font-family: var(--deva); font-style: normal; font-size: .84em; letter-spacing: -.01em; }
+.quote-open, .quote-close { color: var(--line-2); }
+.quote-open { margin-left: -.06em; }
 
-.hero-sub { margin: 1.4rem 0 1.7rem; font-size: 1.02rem; color: var(--ink-2); max-width: 54ch; }
+.hero-gloss {
+  margin: .7rem 0 0; font: 500 .84rem/1.4 var(--mono);
+  letter-spacing: .04em; text-transform: uppercase; color: var(--muted);
+}
+
+.hero-turn {
+  margin: 1.5rem 0 0; padding-top: 1.4rem; border-top: 1px solid var(--line);
+  font-family: var(--serif); font-size: clamp(1.25rem, 4vw, 1.85rem);
+  line-height: 1.28; letter-spacing: -.02em; color: var(--ink-2); max-width: 22ch;
+}
+.hero-turn strong { display: block; color: var(--rust); font-weight: 600; }
+
+.hero-sub { margin: 1.3rem 0 1.7rem; font-size: 1rem; color: var(--ink-2); max-width: 54ch; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: .7rem; }
 .hero-microcopy { display: block; margin-top: .9rem; font-size: .8rem; color: var(--muted); }
+.hero-who {
+  margin: 1.3rem 0 0; padding-left: .85rem; border-left: 3px solid var(--lime);
+  font-size: .88rem; line-height: 1.5; color: var(--ink-2); max-width: 46ch;
+}
 
 @media (min-width: 940px) {
   .hero { grid-template-columns: 1.02fr .98fr; align-items: center; gap: 3.4rem; padding-top: 2.4rem; padding-bottom: 4.5rem; }
@@ -832,3 +871,7 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 .scale-grid h3 { font-size: 1rem; margin-bottom: .5rem; color: var(--deep); }
 .scale-grid p { font-size: .89rem; color: var(--ink-2); line-height: 1.6; margin: 0; }
 @media (min-width: 800px) { .scale-grid { grid-template-columns: 1fr 1fr; gap: 2rem; } }
+
+/* The "we cannot place this" chip. Dashed, because it demonstrates a refusal
+   rather than a result — and the refusal is the honest part. */
+.lookup-chips .chip-unknown { border-style: dashed; }

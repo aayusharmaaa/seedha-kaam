@@ -41,6 +41,11 @@ function startDoc(res, filename) {
 }
 
 function letterhead(doc, title, subtitle) {
+  // The wordmark on screen is "Seedha काम". On paper it is romanised, because
+  // PDFKit's built-in Helvetica has no Devanagari glyphs and embedding a
+  // Unicode face for a letterhead would add ~200 KB to every download on a
+  // connection that can least afford it. The letters themselves are English
+  // for the same reason the app explains elsewhere: they are read by a counter.
   doc.fillColor(ACCENT).font('Helvetica-Bold').fontSize(9).text('SEEDHA KAAM · CITIZEN-PREPARED DOCUMENT · PROTOTYPE', { characterSpacing: 1.2 });
   doc.moveDown(0.8);
   doc.fillColor(INK).font('Helvetica-Bold').fontSize(19).text(title);
