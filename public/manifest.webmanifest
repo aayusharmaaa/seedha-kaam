@@ -1,0 +1,15 @@
+{
+  "name": "Seedha Kaam — khata transfer without a middleman",
+  "short_name": "Seedha Kaam",
+  "description": "Check your property documents before you reach the counter. Independent prototype with synthetic data only.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f5f2ea",
+  "theme_color": "#10201d",
+  "lang": "en-IN",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
