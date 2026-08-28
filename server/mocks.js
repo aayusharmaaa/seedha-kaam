@@ -46,7 +46,7 @@ export const MOCK_REGISTER = [
     id: 'payments',
     area: 'Payments',
     status: 'absent',
-    whatWeDo: 'No payment is taken, and there is no payment screen. The ₹499 figure on the landing page is the intended price of the service, not a charge made here.',
+    whatWeDo: 'No payment is taken, and there is no payment screen. The ₹500 figure on the landing page is the intended price of the service, not a charge made here, and the refund line beside it describes an intended commercial term rather than one this prototype can honour.',
     whatIsReal: 'Nothing to be real — there is no payment flow at all.',
     productionPath: 'A payment gateway with a receipt, and a refund path tied to the guarantee.'
   },

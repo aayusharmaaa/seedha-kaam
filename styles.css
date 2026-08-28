@@ -254,20 +254,24 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 
 .hero[data-stage="on"] .hero-eyebrow   { animation-delay: .05s; }
 .hero[data-stage="on"] .hero-head      { animation: none; }   /* its two lines animate separately */
-.hero[data-stage="on"] .hero-gloss     { animation-delay: .80s; }
+.hero[data-stage="on"] .hero-gloss     { animation-delay: .74s; }
 .hero[data-stage="on"] .hero-three     { animation: none; }   /* the items animate, not the list */
-.hero[data-stage="on"] .hero-three li:nth-child(1) { animation-delay: .92s; }
-.hero[data-stage="on"] .hero-three li:nth-child(2) { animation-delay: 1.02s; }
-.hero[data-stage="on"] .hero-three li:nth-child(3) { animation-delay: 1.12s; }
-.hero[data-stage="on"] .hero-turn      { animation-delay: 1.32s; }
-.hero[data-stage="on"] .hero-sub       { animation-delay: 1.46s; }
-.hero[data-stage="on"] .hero-actions   { animation-delay: 1.56s; }
-.hero[data-stage="on"] .hero-microcopy { animation-delay: 1.64s; }
-.hero[data-stage="on"] .hero-who       { animation-delay: 1.72s; }
+.hero[data-stage="on"] .hero-three li:nth-child(1) { animation-delay: .84s; }
+.hero[data-stage="on"] .hero-three li:nth-child(2) { animation-delay: .93s; }
+.hero[data-stage="on"] .hero-three li:nth-child(3) { animation-delay: 1.02s; }
+/* The payoff runs 1.18s -> ~2.6s (last word lands at 2.19s + 0.42s). Everything
+   below it waits until that is essentially done, so the climax is not competing
+   with body text fading in underneath it. The CTA is the one thing that must not
+   be gated too long — 2.4s, and the lookup card next to it is live from 0.4s. */
+.hero[data-stage="on"] .hero-sub       { animation-delay: 2.28s; }
+.hero[data-stage="on"] .hero-actions   { animation-delay: 2.40s; }
+.hero[data-stage="on"] .hero-microcopy { animation-delay: 2.50s; }
+.hero[data-stage="on"] .hero-who       { animation-delay: 2.58s; }
 
-/* The lookup card comes in alongside the question, not after the whole
-   argument — the right-hand column should never sit empty while the left talks. */
-.hero[data-stage="on"] .hero-lookup { animation: rise .6s cubic-bezier(.2,.78,.32,1) .45s both; }
+/* The right column comes in alongside the question, not after the whole
+   argument — it should never sit empty while the left talks. */
+.hero[data-stage="on"] .pricecut   { animation: rise .6s cubic-bezier(.2,.78,.32,1) .35s both; }
+.hero[data-stage="on"] .hero-lookup { animation: rise .6s cubic-bezier(.2,.78,.32,1) 1.02s both; }
 
 .hero-head {
   font-family: var(--serif); font-weight: 600;
@@ -308,17 +312,107 @@ button:disabled { cursor: not-allowed; opacity: .5; }
   border-radius: 50%; background: var(--deep); color: var(--lime);
   font: 600 .74rem/1 var(--mono);
 }
-.hero[data-stage="on"] .hero-three li::before { animation: pop .38s cubic-bezier(.3,1.5,.5,1) both; }
-.hero[data-stage="on"] .hero-three li:nth-child(1)::before { animation-delay: .98s; }
-.hero[data-stage="on"] .hero-three li:nth-child(2)::before { animation-delay: 1.08s; }
-.hero[data-stage="on"] .hero-three li:nth-child(3)::before { animation-delay: 1.18s; }
-
-.hero-turn {
-  margin: 1.5rem 0 0; padding-top: 1.3rem; border-top: 1px solid var(--line);
-  font-family: var(--serif); font-size: clamp(1.2rem, 3.6vw, 1.7rem);
-  line-height: 1.3; letter-spacing: -.02em; color: var(--ink-2); max-width: 26ch;
+/* Each badge pops in with its line, then all three pulse together at the exact
+   moment the payoff says "All three are public." That pulse is what makes the
+   sentence mean something: the eye connects the words to the three items above
+   it rather than reading them as a fresh assertion. */
+.hero[data-stage="on"] .hero-three li::before {
+  animation: pop .38s cubic-bezier(.3,1.5,.5,1) both,
+             badge-glow .9s cubic-bezier(.2,.7,.3,1) 1.42s both;
 }
-.hero-turn strong { display: block; color: var(--rust); font-weight: 600; }
+.hero[data-stage="on"] .hero-three li:nth-child(1)::before { animation-delay: .90s, 1.42s; }
+.hero[data-stage="on"] .hero-three li:nth-child(2)::before { animation-delay: .99s, 1.50s; }
+.hero[data-stage="on"] .hero-three li:nth-child(3)::before { animation-delay: 1.08s, 1.58s; }
+
+@keyframes badge-glow {
+  0%   { box-shadow: 0 0 0 0 rgba(201,231,85,.65); }
+  55%  { box-shadow: 0 0 0 8px rgba(201,231,85,0); }
+  100% { box-shadow: 0 0 0 0 rgba(201,231,85,0); }
+}
+
+/* ---------------------------------------------------------------- *
+   THE PAYOFF
+
+   The question the headline asks gets answered here, so it leaves the text
+   column and becomes an object. Dark panel, lime accent, the offer set larger
+   than anything else in the hero except the headline itself.
+ * ---------------------------------------------------------------- */
+
+.hero-payoff {
+  position: relative; overflow: hidden;
+  margin: 1.6rem 0 0; padding: 1.25rem 1.35rem 1.35rem;
+  border-radius: var(--radius);
+  background: var(--deep); color: #eee9dd;
+  box-shadow: 0 18px 40px -22px rgba(13,59,52,.75);
+}
+/* a lime edge, drawn top-to-bottom as the panel lands */
+.hero-payoff::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+  background: var(--lime); transform-origin: top center;
+}
+
+.payoff-lead {
+  margin: 0 0 .5rem;
+  font-family: var(--serif); font-size: clamp(1.05rem, 3.2vw, 1.3rem);
+  color: var(--lime); letter-spacing: -.01em;
+}
+.payoff-offer {
+  margin: 0;
+  font-family: var(--serif); font-weight: 600;
+  font-size: clamp(1.3rem, 4.4vw, 2rem); line-height: 1.22; letter-spacing: -.025em;
+  color: #fffdf8;
+}
+.payoff-offer span { display: inline-block; }
+
+/* Script-specific typography, applied with a COMPOUND :lang() on the element
+   itself rather than a descendant combinator.
+   `.hero-payoff :lang(hi)` matched .payoff-offer AND every word span inside it,
+   so an em-based size compounded twice — and at (0,1,1) it outranked the
+   clamp() on .payoff-offer (0,1,0) that it was only meant to adjust. The result
+   was a 14px payoff on a 320px phone in exactly the two languages this product
+   exists for. Sizes are restated per script instead of scaled. */
+.hero-payoff:lang(kn) { font-family: var(--knda); }
+.hero-payoff:lang(hi) { font-family: var(--deva); }
+.payoff-lead:lang(kn),  .payoff-lead:lang(hi)  {
+  font-size: clamp(.98rem, 3vw, 1.2rem); line-height: 1.45; letter-spacing: 0;
+}
+.payoff-offer:lang(kn), .payoff-offer:lang(hi) {
+  font-size: clamp(1.16rem, 3.9vw, 1.78rem); line-height: 1.4; letter-spacing: 0;
+}
+
+/* Entrance. Qualified past .hero-copy > * deliberately — equal specificity
+   would leave this at the mercy of source order. */
+.hero[data-stage="on"] .hero-copy > .hero-payoff {
+  animation: payoff-in .62s cubic-bezier(.2,.9,.3,1) 1.18s both;
+}
+@keyframes payoff-in {
+  from { opacity: 0; transform: translateY(18px) scale(.985); }
+  to   { opacity: 1; transform: none; }
+}
+
+.hero[data-stage="on"] .hero-payoff::before { animation: draw-down .5s cubic-bezier(.2,.8,.3,1) 1.36s both; }
+@keyframes draw-down { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+.hero[data-stage="on"] .payoff-lead { animation: rise .45s cubic-bezier(.2,.78,.32,1) 1.40s both; }
+
+/* The offer arrives a word at a time. --w is set per word in the markup and
+   capped there, so a long translation cannot drag the sequence out. */
+.hero[data-stage="on"] .payoff-offer span {
+  animation: word-up .42s cubic-bezier(.2,.85,.3,1) both;
+  animation-delay: calc(1.62s + var(--w) * .052s);
+}
+@keyframes word-up {
+  from { opacity: 0; transform: translateY(.45em); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* One slow sheen across the panel as the last words land. */
+.hero[data-stage="on"] .hero-payoff::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(104deg, transparent 34%, rgba(201,231,85,.16) 50%, transparent 64%);
+  animation: sheen 1.15s cubic-bezier(.35,.6,.4,1) 1.72s both;
+}
+@keyframes sheen { from { transform: translateX(-105%); } to { transform: translateX(105%); } }
 
 .hero-sub { margin: 1.3rem 0 1.7rem; font-size: 1rem; color: var(--ink-2); max-width: 54ch; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: .7rem; }
@@ -977,4 +1071,123 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 
 @media (prefers-reduced-motion: reduce) {
   [data-reveal="out"] { opacity: 1; transform: none; }
+}
+
+/* ==================================================================
+   THE RIGHT-HAND VISUAL
+
+   Five document fragments lying at odd angles pull themselves into an ordered,
+   checked stack; then the agent's fee is struck through and replaced.
+
+   IMPORTANT: every element's DEFAULT state is the finished one — shards sit in
+   their gathered position, the strike is drawn, the new price is visible. The
+   keyframes animate FROM the scattered/unstruck state TO that default. So a
+   paused or unsupported timeline shows a tidy stack and the right price, never
+   paper frozen in mid-air.
+   ================================================================== */
+
+.hero-side { display: grid; gap: 1rem; align-content: start; }
+
+.pricecut {
+  margin: 0;
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: 1.1rem 1.2rem 1.15rem;
+}
+
+/* Clipped on purpose. The scattered start positions sit well outside this box,
+   so without it the fragments fly across the lookup card below and the payoff
+   panel to the left mid-animation. Clipped, they read as sliding in from off
+   the edges of a work surface — which is also why the surface is tinted. */
+.shards {
+  position: relative; height: 128px; margin-bottom: .55rem;
+  overflow: hidden; border-radius: 7px;
+  background: linear-gradient(var(--paper-2), var(--paper));
+}
+
+.shard {
+  position: absolute; left: 50%; top: 50%;
+  width: 58px; height: 78px; margin: -39px 0 0 -29px;
+  padding: 9px 7px 0;
+  background: #fffdf8; border: 1px solid var(--line-2); border-radius: 3px;
+  box-shadow: 0 7px 16px -10px rgba(16,32,29,.5);
+  transform: translate(var(--fx), var(--fy)) rotate(var(--fr));
+}
+.shard i { display: block; height: 3px; border-radius: 2px; background: var(--line); margin-bottom: 6px; }
+.shard i:nth-child(2) { width: 76%; }
+.shard i:nth-child(3) { width: 58%; }
+.shard i:nth-child(4) { width: 84%; }
+
+/* gathered (default) and scattered (animation start) */
+.s1 { --fx: -56px; --fy: 4px;  --fr: -10deg; --sx: -104px; --sy: 40px;  --sr: -38deg; }
+.s2 { --fx: -28px; --fy: -3px; --fr: -5deg;  --sx: -54px;  --sy: -46px; --sr: 28deg; }
+.s3 { --fx: 0px;   --fy: -7px; --fr: 0deg;   --sx: 16px;   --sy: 52px;  --sr: -20deg; }
+.s4 { --fx: 28px;  --fy: -3px; --fr: 5deg;   --sx: 78px;   --sy: -42px; --sr: 34deg; }
+.s5 { --fx: 56px;  --fy: 4px;  --fr: 10deg;  --sx: 112px;  --sy: 30px;  --sr: -29deg; }
+
+.hero[data-stage="on"] .shard { animation: gather .72s cubic-bezier(.2,.9,.28,1) both; }
+.hero[data-stage="on"] .s1 { animation-delay: 1.12s; }
+.hero[data-stage="on"] .s2 { animation-delay: 1.20s; }
+.hero[data-stage="on"] .s3 { animation-delay: 1.28s; }
+.hero[data-stage="on"] .s4 { animation-delay: 1.36s; }
+.hero[data-stage="on"] .s5 { animation-delay: 1.44s; }
+@keyframes gather {
+  from { opacity: 0; transform: translate(var(--sx), var(--sy)) rotate(var(--sr)) scale(.9); }
+  to   { opacity: 1; transform: translate(var(--fx), var(--fy)) rotate(var(--fr)) scale(1); }
+}
+
+.seal {
+  position: absolute; left: 50%; top: 50%; margin: -14px 0 0 -14px;
+  width: 28px; height: 28px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--lime); color: var(--deep);
+  box-shadow: 0 4px 12px -4px rgba(13,59,52,.55);
+}
+.hero[data-stage="on"] .seal { animation: pop .42s cubic-bezier(.3,1.5,.5,1) 2.05s both; }
+
+/* --- the cut ---------------------------------------------------- */
+
+.cut {
+  display: flex; align-items: center; justify-content: center; gap: .85rem;
+  padding-top: .85rem; border-top: 1px solid var(--line);
+}
+.cut-side { display: flex; flex-direction: column; align-items: center; gap: .1rem; }
+.cut-side em { font-style: normal; font-size: .7rem; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; font-family: var(--mono); }
+
+.cut-side.was s {
+  position: relative; text-decoration: none;
+  font-family: var(--serif); font-size: 1.5rem; color: var(--muted); letter-spacing: -.02em;
+}
+.cut-side.was s::after {
+  content: ""; position: absolute; left: -6%; right: -6%; top: 52%; height: 3px;
+  border-radius: 2px; background: var(--rust); transform-origin: left center;
+}
+.hero[data-stage="on"] .cut-side.was s::after { animation: draw .38s cubic-bezier(.2,.8,.3,1) 2.30s both; }
+
+.cut-arrow { color: var(--line-2); display: grid; place-items: center; }
+.hero[data-stage="on"] .cut-arrow { animation: rise .35s ease 2.42s both; }
+
+.cut-side.now b {
+  font-family: var(--serif); font-weight: 600; font-size: 2rem;
+  color: var(--deep); letter-spacing: -.03em; line-height: 1;
+}
+.hero[data-stage="on"] .cut-side.now b { animation: pop .45s cubic-bezier(.3,1.45,.5,1) 2.52s both; }
+
+.cut-note {
+  margin: .7rem 0 0; text-align: center;
+  font-size: .72rem; line-height: 1.45; color: var(--muted);
+}
+.hero[data-stage="on"] .cut-note { animation: rise .4s ease 2.72s both; }
+
+/* Indic scripts: restate the size, never scale it with a descendant :lang().
+   See the note on .payoff-offer for the bug that pattern caused. */
+.cut-note:lang(kn), .cut-note:lang(hi) { font-size: .74rem; line-height: 1.6; }
+.cut-side em:lang(kn), .cut-side em:lang(hi) { font-size: .66rem; letter-spacing: 0; text-transform: none; }
+
+@media (max-width: 360px) {
+  .shards { height: 112px; }
+  .shard { width: 50px; height: 68px; margin: -34px 0 0 -25px; }
+  .s1 { --fx: -46px; } .s2 { --fx: -23px; } .s4 { --fx: 23px; } .s5 { --fx: 46px; }
+  .cut-side.was s { font-size: 1.3rem; }
+  .cut-side.now b { font-size: 1.7rem; }
 }

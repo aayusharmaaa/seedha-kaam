@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { api } from './api.js';
 import { Brand, Button, LanguageSwitch, Reveal, SiteFooter, SiteNav, SpeakButton, useCountUp, useLang, useStagedEntrance, rupees } from './ui.jsx';
 
@@ -109,6 +109,57 @@ function OfficeLookup() {
         </div>
       )}
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * The right-hand visual.
+ *
+ * Two claims, shown rather than written. Five document fragments lying at odd
+ * angles pull themselves into an ordered, checked stack — that is the whole
+ * product in one gesture. Then the fee the agent quoted is struck through and
+ * replaced.
+ *
+ * Everything renders in its FINISHED state by default; the animation only runs
+ * when the hero has opted into staging. A stalled timeline shows a neat stack
+ * and the corrected price, never scattered paper frozen mid-air.
+ * ------------------------------------------------------------------ */
+
+function PriceCut() {
+  const { t } = useLang();
+  return (
+    <figure className="pricecut">
+      <div className="shards" role="img" aria-label={t('cut.gathered')}>
+        {[1, 2, 3, 4, 5].map((n) => (
+          <span key={n} className={`shard s${n}`} aria-hidden="true">
+            <i /><i /><i /><i />
+          </span>
+        ))}
+        <span className="seal" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="m5 12.5 4.6 4.5L19 7.5" />
+          </svg>
+        </span>
+      </div>
+
+      <figcaption className="cut">
+        <span className="cut-side was">
+          <s>₹6,000</s>
+          <em>{t('cut.was')}</em>
+        </span>
+        <span className="cut-arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 12h14M13 6l6 6-6 6" />
+          </svg>
+        </span>
+        <span className="cut-side now">
+          <b>₹500</b>
+          <em>{t('cut.now')}</em>
+        </span>
+      </figcaption>
+
+      <p className="cut-note">{t('cut.refund')}</p>
+    </figure>
   );
 }
 
@@ -410,7 +461,7 @@ export default function Landing({ meta, onStart, starting }) {
   const { t } = useLang();
   // Opts the hero into its entrance animation after mount, and back out once
   // the sequence has played. See useStagedEntrance.
-  const heroRef = useStagedEntrance();
+  const heroRef = useStagedEntrance(3600);
   return (
     <>
       <SiteNav />
@@ -438,9 +489,25 @@ export default function Landing({ meta, onStart, starting }) {
             <li>{t('hero.item3')}</li>
           </ol>
 
-          <p className="hero-turn">
-            {t('hero.turnLead')} <strong>{t('hero.turn')}</strong>
-          </p>
+          {/*
+            The payoff. This is the answer to the question the headline asks, so
+            it breaks out of the text column into its own panel rather than
+            reading as one more paragraph. The offer is revealed word by word —
+            the words are split here rather than in CSS because the split has to
+            work in Kannada and Hindi too, and because a real space has to stay
+            OUTSIDE each span or the line stops wrapping at 320px.
+          */}
+          <div className="hero-payoff">
+            <p className="payoff-lead">{t('hero.turnLead')}</p>
+            <p className="payoff-offer">
+              {t('hero.turn').split(' ').map((word, index, all) => (
+                <Fragment key={`${word}-${index}`}>
+                  <span style={{ '--w': Math.min(index, 14) }}>{word}</span>
+                  {index < all.length - 1 ? ' ' : ''}
+                </Fragment>
+              ))}
+            </p>
+          </div>
 
           <p className="hero-sub">{t('hero.sub')}</p>
 
@@ -453,7 +520,10 @@ export default function Landing({ meta, onStart, starting }) {
           <span className="hero-microcopy">{t('hero.ctaSub')}</span>
           <p className="hero-who">{t('hero.who')}</p>
         </div>
-        <div className="hero-lookup" id="lookup"><OfficeLookup /></div>
+        <div className="hero-side">
+          <PriceCut />
+          <div className="hero-lookup" id="lookup"><OfficeLookup /></div>
+        </div>
       </section>
 
       <Evidence />
