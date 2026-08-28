@@ -282,6 +282,81 @@ export function useHashRoute() {
   return [route, (next) => { window.location.hash = next; }];
 }
 
+/**
+ * Should this visit get entrance animation at all?
+ *
+ * No, if the reader asked for reduced motion — and no, if the document is
+ * hidden right now. A page opened into a background tab does not composite, so
+ * CSS animations never advance; with `animation-fill-mode: both` that leaves
+ * every staged element frozen at opacity 0. Someone middle-clicking the link
+ * and switching to the tab a minute later would find a blank page.
+ *
+ * The entrance is a nicety. Being able to read the page is not.
+ */
+const motionWelcome = () => typeof window !== 'undefined'
+  && document.visibilityState === 'visible'
+  && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+/**
+ * Staged entrance for a section.
+ *
+ * The markup renders finished. This opts the section INTO the animation after
+ * mount, and opts it back out once the sequence has had time to play — so a
+ * paused or broken timeline resolves to the finished page rather than a blank
+ * one, and `will-change` does not linger on a dozen elements forever.
+ */
+export function useStagedEntrance(totalMs = 2600) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const node = ref.current;
+    if (!node || !motionWelcome()) return undefined;
+    node.dataset.stage = 'on';
+    const done = setTimeout(() => { delete node.dataset.stage; }, totalMs);
+    return () => clearTimeout(done);
+  }, [totalMs]);
+  return ref;
+}
+
+/**
+ * Reveal-on-scroll, built so it can never strand content invisible.
+ *
+ * The element renders fully visible. Only once JS has run does it mark itself
+ * hidden and hand itself to an IntersectionObserver — so a failed script, a
+ * browser without IntersectionObserver, or a reader who has asked for reduced
+ * motion all get plain visible content rather than a blank column. A long
+ * failsafe covers the remaining case where the observer exists but never fires.
+ *
+ * This matters more here than on a normal marketing page: the thing being
+ * revealed is somebody's explanation of why their property transfer is stuck.
+ */
+export function Reveal({ as: Tag = 'div', delay = 0, className = '', children, ...props }) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return undefined;
+    if (typeof IntersectionObserver === 'undefined') return undefined;
+    if (!motionWelcome()) return undefined;
+
+    node.dataset.reveal = 'out';
+    const show = () => { node.dataset.reveal = 'in'; };
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) { show(); observer.disconnect(); }
+    }, { threshold: 0.15, rootMargin: '0px 0px -8% 0px' });
+    observer.observe(node);
+
+    const failsafe = setTimeout(show, 6000);
+    return () => { observer.disconnect(); clearTimeout(failsafe); };
+  }, []);
+
+  return (
+    <Tag ref={ref} className={className} style={{ transitionDelay: `${delay}ms` }} {...props}>
+      {children}
+    </Tag>
+  );
+}
+
 export function useOnline() {
   const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
   useEffect(() => {

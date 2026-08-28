@@ -229,23 +229,67 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 .hero { max-width: var(--wrap); margin: 0 auto; padding: 1.5rem 1.15rem 3rem; display: grid; gap: 2.2rem; }
 .hero-eyebrow { display: block; font: 500 .74rem/1 var(--mono); letter-spacing: .13em; text-transform: uppercase; color: var(--deep-2); margin-bottom: 1.1rem; }
 
-/* The hook.
-   Line one is the price the reader has already been quoted. Line two takes it
-   apart. The reversal is the whole argument, so line two carries the weight. */
+/* ---------------------------------------------------------------- *
+   THE HOOK, STAGED
+
+   The page asks a question and then answers it, so it must not arrive all at
+   once. The price lands first in grey, the question lands second in black, a
+   rule draws under it, and only then do the three answers count themselves in.
+
+   All of it is CSS with `both` fill mode: no JS, nothing to fail, and the
+   global prefers-reduced-motion rule collapses every duration to ~0 so a reader
+   who asked for stillness gets the finished page immediately.
+ * ---------------------------------------------------------------- */
+
+@keyframes rise { from { opacity: 0; transform: translateY(13px); } to { opacity: 1; transform: none; } }
+@keyframes draw { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes pop  { from { opacity: 0; transform: scale(.55); } to { opacity: 1; transform: none; } }
+
+/* EVERY rule below is scoped to [data-stage="on"], which React adds after mount
+   and removes once the sequence has had time to play. Unstaged markup is the
+   finished page: no JS, a background tab, or reduced motion all render it
+   immediately rather than holding it at opacity 0 forever. */
+.hero[data-stage="on"] .hero-copy > *,
+.hero[data-stage="on"] .hero-three li { animation: rise .5s cubic-bezier(.2,.78,.32,1) both; }
+
+.hero[data-stage="on"] .hero-eyebrow   { animation-delay: .05s; }
+.hero[data-stage="on"] .hero-head      { animation: none; }   /* its two lines animate separately */
+.hero[data-stage="on"] .hero-gloss     { animation-delay: .80s; }
+.hero[data-stage="on"] .hero-three     { animation: none; }   /* the items animate, not the list */
+.hero[data-stage="on"] .hero-three li:nth-child(1) { animation-delay: .92s; }
+.hero[data-stage="on"] .hero-three li:nth-child(2) { animation-delay: 1.02s; }
+.hero[data-stage="on"] .hero-three li:nth-child(3) { animation-delay: 1.12s; }
+.hero[data-stage="on"] .hero-turn      { animation-delay: 1.32s; }
+.hero[data-stage="on"] .hero-sub       { animation-delay: 1.46s; }
+.hero[data-stage="on"] .hero-actions   { animation-delay: 1.56s; }
+.hero[data-stage="on"] .hero-microcopy { animation-delay: 1.64s; }
+.hero[data-stage="on"] .hero-who       { animation-delay: 1.72s; }
+
+/* The lookup card comes in alongside the question, not after the whole
+   argument — the right-hand column should never sit empty while the left talks. */
+.hero[data-stage="on"] .hero-lookup { animation: rise .6s cubic-bezier(.2,.78,.32,1) .45s both; }
+
 .hero-head {
   font-family: var(--serif); font-weight: 600;
   font-size: clamp(2rem, 8vw, 3.7rem); line-height: 1.04; letter-spacing: -.035em;
   margin: 0;
-  animation: quote-in .55s cubic-bezier(.2,.75,.3,1) both;
 }
-@keyframes quote-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 .hero-head span { display: block; }
 .head-price { color: var(--muted); }
 .head-claim { color: var(--ink); }
+.hero[data-stage="on"] .hero-head span { animation: rise .55s cubic-bezier(.2,.78,.32,1) both; }
+/* Qualified past the shorthand deliberately. The `animation` shorthand resets
+   animation-delay to 0, and its selector outranks a bare `.head-price` — so an
+   unqualified delay here is silently discarded and both lines land at once,
+   which is precisely the beat this section exists for. */
+.hero[data-stage="on"] .hero-head .head-price { animation-delay: .12s; }
+.hero[data-stage="on"] .hero-head .head-claim { animation-delay: .52s; }
 .head-claim::after {
   content: ""; display: block; width: 3.2rem; height: 4px; margin-top: .6rem;
   border-radius: 2px; background: var(--lime);
+  transform-origin: left center;
 }
+.hero[data-stage="on"] .head-claim::after { animation: draw .45s cubic-bezier(.2,.78,.32,1) .74s both; }
 .hero-head :lang(kn) { font-family: var(--knda); font-size: .86em; letter-spacing: -.01em; }
 .hero-head :lang(hi) { font-family: var(--deva); font-size: .86em; letter-spacing: -.01em; }
 
@@ -264,6 +308,10 @@ button:disabled { cursor: not-allowed; opacity: .5; }
   border-radius: 50%; background: var(--deep); color: var(--lime);
   font: 600 .74rem/1 var(--mono);
 }
+.hero[data-stage="on"] .hero-three li::before { animation: pop .38s cubic-bezier(.3,1.5,.5,1) both; }
+.hero[data-stage="on"] .hero-three li:nth-child(1)::before { animation-delay: .98s; }
+.hero[data-stage="on"] .hero-three li:nth-child(2)::before { animation-delay: 1.08s; }
+.hero[data-stage="on"] .hero-three li:nth-child(3)::before { animation-delay: 1.18s; }
 
 .hero-turn {
   margin: 1.5rem 0 0; padding-top: 1.3rem; border-top: 1px solid var(--line);
@@ -911,3 +959,22 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 /* The "we cannot place this" chip. Dashed, because it demonstrates a refusal
    rather than a result — and the refusal is the honest part. */
 .lookup-chips .chip-unknown { border-style: dashed; }
+
+/* ------------------------------------------------------------------
+   Scroll reveal
+
+   Driven by the <Reveal> component, which only applies data-reveal AFTER its
+   effect runs. Content is therefore visible by default: no JS, no
+   IntersectionObserver, or reduced-motion all render the finished page.
+   ------------------------------------------------------------------ */
+
+[data-reveal] {
+  transition: opacity .5s ease, transform .5s cubic-bezier(.2,.78,.32,1);
+  will-change: opacity, transform;
+}
+[data-reveal="out"] { opacity: 0; transform: translateY(14px); }
+[data-reveal="in"]  { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal="out"] { opacity: 1; transform: none; }
+}

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from './api.js';
-import { Brand, Button, LanguageSwitch, SiteFooter, SiteNav, SpeakButton, useCountUp, useLang, rupees } from './ui.jsx';
+import { Brand, Button, LanguageSwitch, Reveal, SiteFooter, SiteNav, SpeakButton, useCountUp, useLang, useStagedEntrance, rupees } from './ui.jsx';
 
 /* ------------------------------------------------------------------ *
  * The hero's live office lookup.
@@ -137,35 +137,37 @@ function PriceContrast() {
         <span className="kicker">The itemised bill</span>
         <h2>What the {rupees(agent)} actually buys.</h2>
         <p>
-          Not influence. Three facts, each of them already published by the state,
-          none of them findable by the person who needs them.
+          Three facts, each already published by the state, none of them findable by the
+          person who needs them. Priced by the state at nothing.
         </p>
       </div>
 
       <ol className="tax-list">
-        <li>
+        <Reveal as="li" delay={0}>
           <span className="tax-what">Which of the five corporations holds your record</span>
           <span className="tax-where">Published. Resolvable from your address in about a second.</span>
           <span className="tax-price">₹0</span>
-        </li>
-        <li>
+        </Reveal>
+        <Reveal as="li" delay={120}>
           <span className="tax-what">Which document is actually wrong, and why</span>
           <span className="tax-where">A notified checklist, plus consistency the counter checks silently.</span>
           <span className="tax-price">₹0</span>
-        </li>
-        <li>
+        </Reveal>
+        <Reveal as="li" delay={240}>
           <span className="tax-what">That you have a 30-day right, and how to enforce it</span>
           <span className="tax-where">In force since 2011. Almost nobody claims it.</span>
           <span className="tax-price">₹0</span>
-        </li>
+        </Reveal>
       </ol>
 
       <div className="tax-total">
         <p>
-          <strong>An information tax, not a bribe.</strong> That is the honest name for most
-          of what changes hands here — and it is the part software can actually delete.
-          The rest of it, the part that is genuinely someone sitting on your file, is what
-          the clock is for.
+          <strong>This part is an information tax.</strong> Not corruption — just three public
+          facts with no route to the person who needs them, and it is the part software can
+          delete outright. We cannot tell you what share of any given fee it is, because
+          nobody can measure that honestly. The rest — somebody genuinely sitting on your
+          file — is what the clock is for, and the clock is slower than cash. We do not
+          pretend otherwise.
         </p>
         <span className="price-note">
           Payments are not implemented in this prototype — there is no payment screen at all.
@@ -297,29 +299,29 @@ function Architecture() {
         </p>
       </div>
       <div className="arch-flow">
-        <div className="arch-node model">
+        <Reveal className="arch-node model" delay={0}>
           <span className="node-role">Model</span>
           <strong>Reads a photo into fields</strong>
           <p>Every value it reads is shown to you as an editable field first.</p>
-        </div>
+        </Reveal>
         <div className="arch-arrow" aria-hidden="true">→</div>
-        <div className="arch-node you">
+        <Reveal className="arch-node you" delay={140}>
           <span className="node-role">You</span>
           <strong>Confirm each value</strong>
           <p>Nothing reaches a rule until a human has looked at it.</p>
-        </div>
+        </Reveal>
         <div className="arch-arrow" aria-hidden="true">→</div>
-        <div className="arch-node engine">
+        <Reveal className="arch-node engine" delay={280}>
           <span className="node-role">Engine</span>
           <strong>Decides, deterministically</strong>
           <p>46 rules. Same input, same output, every time. Returns a code and an evidence trail.</p>
-        </div>
+        </Reveal>
         <div className="arch-arrow" aria-hidden="true">→</div>
-        <div className="arch-node ledger">
+        <Reveal className="arch-node ledger" delay={420}>
           <span className="node-role">Ledger</span>
           <strong>Turns the code into your language</strong>
           <p>47 codes × 3 languages = 141 explanations that exist once, for everybody.</p>
-        </div>
+        </Reveal>
       </div>
       <p className="arch-scale">
         That last line is also the scale answer. Because explanations are cached per defect code and not
@@ -406,6 +408,9 @@ function Honesty({ meta }) {
 
 export default function Landing({ meta, onStart, starting }) {
   const { t } = useLang();
+  // Opts the hero into its entrance animation after mount, and back out once
+  // the sequence has played. See useStagedEntrance.
+  const heroRef = useStagedEntrance();
   return (
     <>
       <SiteNav />
@@ -417,7 +422,7 @@ export default function Landing({ meta, onStart, starting }) {
         So the sentence leads, in the language the reader chose, and the turn
         underneath it is the promise.
       */}
-      <section className="hero">
+      <section className="hero" ref={heroRef}>
         <div className="hero-copy">
           <span className="hero-eyebrow">{t('hero.eyebrow')}</span>
 

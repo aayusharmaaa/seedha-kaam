@@ -1,14 +1,14 @@
 # Submission pack
 
-## Project summary (247 words)
+## Project summary (246 words)
 
-The agent wants ₹6,000. Most of that is not a bribe.
+The agent wants ₹6,000. What is he actually selling?
 
-It is what he charges for knowing three things nobody told you: which of
-Bengaluru's five new corporations holds your file, which document is actually
-wrong, and that you have had a 30-day statutory right since 2011. All three are
-public; none is findable by the person who needs them. That gap is a middleman's
-entire business — an information tax, not corruption.
+Three things nobody told you: which of Bengaluru's five new corporations holds
+your file, which document is actually wrong, and that you have had a 30-day
+statutory right since 2011. All three are public; none is findable by the person
+who needs them. That gap is a middleman's entire business — an information tax,
+and unlike corruption it is something software can simply delete.
 
 Seedha काम deletes the tax. Speak in Kannada, Hindi or English. We resolve which
 corporation you are in, and near a boundary we name both offices rather than
@@ -39,7 +39,7 @@ Phone-sized viewport, network throttled and visible.
 
 | ~sec | Beat |
 |---|---|
-| 0:00 | Land on the hook: **"The agent wants ₹6,000. Most of that is not a bribe."** Read the three things he is actually charging for. |
+| 0:00 | Land on the hook, which animates in as a question and then answers itself: **"The agent wants ₹6,000. What is he actually selling?"** — then the three things, one at a time. |
 | 0:06 | Type **Domlur** into the hero lookup. It returns a **boundary case**: two offices, which to try first. *"That is the answer a tout charges for. It is free, before I have entered anything."* |
 | 0:14 | Open Lakshmi's case. Speak the Kannada-English line: *"naanu appa house-na khata transfer maadbeku…"* The parse appears — inheritance, sale-blocked, Brookefield — with the matched cues shown. |
 | 0:26 | Office resolves: Bengaluru East, Mahadevapura zone. |

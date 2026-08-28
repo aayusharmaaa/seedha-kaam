@@ -29,8 +29,8 @@ const STRINGS = {
 
     'hero.eyebrow': 'Bengaluru · khata transfer · independent prototype',
     'hero.price': 'The agent wants ₹6,000.',
-    'hero.claim': 'Most of that is not a bribe.',
-    'hero.gloss': 'It is what he charges for knowing three things nobody told you:',
+    'hero.claim': 'What is he actually selling?',
+    'hero.gloss': 'Three things nobody ever told you:',
     'hero.item1': 'which office actually holds your file',
     'hero.item2': 'which document is actually wrong',
     'hero.item3': 'when your deadline actually runs out',
@@ -191,8 +191,8 @@ const STRINGS = {
 
     'hero.eyebrow': 'ಬೆಂಗಳೂರು · ಖಾತಾ ವರ್ಗಾವಣೆ · ಸ್ವತಂತ್ರ ಮಾದರಿ',
     'hero.price': 'ಏಜೆಂಟ್ ₹6,000 ಕೇಳುತ್ತಾನೆ.',
-    'hero.claim': 'ಅದರಲ್ಲಿ ಹೆಚ್ಚಿನದು ಲಂಚವಲ್ಲ.',
-    'hero.gloss': 'ಯಾರೂ ನಿಮಗೆ ಹೇಳದ ಮೂರು ವಿಷಯ ಗೊತ್ತಿರುವುದಕ್ಕೆ ಅವನು ಕೇಳುವ ಬೆಲೆ ಅದು:',
+    'hero.claim': 'ಅವನು ನಿಜವಾಗಿ ಮಾರುತ್ತಿರುವುದೇನು?',
+    'hero.gloss': 'ಯಾರೂ ನಿಮಗೆ ಹೇಳದ ಮೂರು ವಿಷಯ:',
     'hero.item1': 'ನಿಮ್ಮ ಕಡತ ನಿಜವಾಗಿ ಯಾವ ಕಚೇರಿಯಲ್ಲಿದೆ',
     'hero.item2': 'ನಿಜವಾಗಿ ಯಾವ ದಾಖಲೆ ತಪ್ಪಾಗಿದೆ',
     'hero.item3': 'ನಿಮ್ಮ ಗಡುವು ನಿಜವಾಗಿ ಯಾವಾಗ ಮುಗಿಯುತ್ತದೆ',
@@ -353,8 +353,8 @@ const STRINGS = {
 
     'hero.eyebrow': 'बेंगलुरु · खाता हस्तांतरण · स्वतंत्र प्रोटोटाइप',
     'hero.price': 'एजेंट ₹6,000 माँगता है।',
-    'hero.claim': 'उसमें ज़्यादातर रिश्वत नहीं है।',
-    'hero.gloss': 'वह तीन बातें जानने के पैसे लेता है, जो आपको किसी ने नहीं बताईं:',
+    'hero.claim': 'वह असल में बेच क्या रहा है?',
+    'hero.gloss': 'तीन बातें, जो आपको किसी ने नहीं बताईं:',
     'hero.item1': 'आपकी फाइल असल में किस कार्यालय के पास है',
     'hero.item2': 'असल में कौन-सा दस्तावेज़ गलत है',
     'hero.item3': 'आपकी समय-सीमा असल में कब खत्म होती है',
