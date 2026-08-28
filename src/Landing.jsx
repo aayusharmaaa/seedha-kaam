@@ -133,19 +133,44 @@ function PriceContrast() {
 
   return (
     <section className="price" ref={ref} id="price">
-      <div className="price-inner">
-        <div className="price-side agent">
-          <span className="price-label">What Lakshmi was quoted</span>
-          <div className="price-figure">{rupees(agent)}</div>
-          <p>To be told her papers were "not in order" — without ever being told which paper, or which line on it.</p>
-        </div>
-        <div className="price-divider" aria-hidden="true"><span>vs</span></div>
-        <div className="price-side ours">
-          <span className="price-label">What this costs</span>
-          <div className="price-figure">₹499</div>
-          <p>The same outcome, and you know exactly what was wrong, who fixes it, where, and how many days it takes.</p>
-          <span className="price-note">Payments are not implemented in this prototype. There is no payment screen at all — see <a href="#/mocks">/mocks</a>.</span>
-        </div>
+      <div className="price-head">
+        <span className="kicker">The itemised bill</span>
+        <h2>What the {rupees(agent)} actually buys.</h2>
+        <p>
+          Not influence. Three facts, each of them already published by the state,
+          none of them findable by the person who needs them.
+        </p>
+      </div>
+
+      <ol className="tax-list">
+        <li>
+          <span className="tax-what">Which of the five corporations holds your record</span>
+          <span className="tax-where">Published. Resolvable from your address in about a second.</span>
+          <span className="tax-price">₹0</span>
+        </li>
+        <li>
+          <span className="tax-what">Which document is actually wrong, and why</span>
+          <span className="tax-where">A notified checklist, plus consistency the counter checks silently.</span>
+          <span className="tax-price">₹0</span>
+        </li>
+        <li>
+          <span className="tax-what">That you have a 30-day right, and how to enforce it</span>
+          <span className="tax-where">In force since 2011. Almost nobody claims it.</span>
+          <span className="tax-price">₹0</span>
+        </li>
+      </ol>
+
+      <div className="tax-total">
+        <p>
+          <strong>An information tax, not a bribe.</strong> That is the honest name for most
+          of what changes hands here — and it is the part software can actually delete.
+          The rest of it, the part that is genuinely someone sitting on your file, is what
+          the clock is for.
+        </p>
+        <span className="price-note">
+          Payments are not implemented in this prototype — there is no payment screen at all.
+          See <a href="#/mocks">/mocks</a>.
+        </span>
       </div>
     </section>
   );
@@ -214,9 +239,9 @@ const MECHANICS = [
     id: 'clock',
     step: '03',
     title: 'Make the deadline do the pushing',
-    body: 'Your acknowledgement number attaches a statutory deadline. When it lapses, the first appeal is already drafted — correct addressee, correct date arithmetic, your name at the bottom. You sign it. You write nothing.',
+    body: 'Your acknowledgement number attaches a statutory deadline. When it lapses, the first appeal is already drafted — correct addressee, correct date arithmetic, your name at the bottom. You sign it. It is not as fast as paying someone, and we do not pretend otherwise — it is the only lever you have that costs nothing.',
     proof: 'Day 31 · appeal ready',
-    proofLabel: 'The clock does what a bribe used to'
+    proofLabel: 'The only pressure you have that is not money'
   }
 ];
 
@@ -396,12 +421,17 @@ export default function Landing({ meta, onStart, starting }) {
         <div className="hero-copy">
           <span className="hero-eyebrow">{t('hero.eyebrow')}</span>
 
-          <h1 className="hero-quote">
-            <span className="quote-open" aria-hidden="true">&ldquo;</span>
-            <span className="quote-text">{t('hero.quote')}</span>
-            <span className="quote-close" aria-hidden="true">&rdquo;</span>
+          <h1 className="hero-head">
+            <span className="head-price">{t('hero.price')}</span>
+            <span className="head-claim">{t('hero.claim')}</span>
           </h1>
+
           <p className="hero-gloss">{t('hero.gloss')}</p>
+          <ol className="hero-three">
+            <li>{t('hero.item1')}</li>
+            <li>{t('hero.item2')}</li>
+            <li>{t('hero.item3')}</li>
+          </ol>
 
           <p className="hero-turn">
             {t('hero.turnLead')} <strong>{t('hero.turn')}</strong>
