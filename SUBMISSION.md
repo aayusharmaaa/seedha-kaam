@@ -1,14 +1,14 @@
 # Submission pack
 
-## Project summary (246 words)
+## Project summary (244 words)
 
-The agent wants ₹6,000. What is he actually selling?
+We are not ending bribery. We are making it cheaper :)
 
-Three things nobody told you: which of Bengaluru's five new corporations holds
-your file, which document is actually wrong, and that you have had a 30-day
-statutory right since 2011. All three are public; none is findable by the person
-who needs them. That gap is a middleman's entire business — an information tax,
-and unlike corruption it is something software can simply delete.
+The agent wants ₹6,000. He is selling three things nobody told you: which of
+Bengaluru's five corporations holds your file, which document is actually wrong,
+and that you have had a 30-day statutory right since 2011. All three are public;
+none is findable by the person who needs them. That gap is a middleman's entire
+business — an information tax, and unlike corruption software can delete it.
 
 Seedha काम deletes the tax. Speak in Kannada, Hindi or English. We resolve which
 corporation you are in, and near a boundary we name both offices rather than
@@ -27,7 +27,7 @@ credentials or touch a government system — you submit, we prepare and track.
 Records are synthetic; all fourteen mocks are listed at /mocks. Adding a service
 means authoring a rule file, not writing a scraper.
 
-Pay a fraction of the agent's fee. The information was always yours.
+The information was always yours.
 
 ---
 
@@ -39,7 +39,7 @@ Phone-sized viewport, network throttled and visible.
 
 | ~sec | Beat |
 |---|---|
-| 0:00 | Land on the hook, which animates in as a question and then answers itself: **"The agent wants ₹6,000. What is he actually selling?"** — then the three things, one at a time. |
+| 0:00 | Land on the hook: **"We are not ending bribery. We are making it cheaper :)"** — then, one line down, what the ₹6,000 actually buys, item by item. |
 | 0:06 | Type **Domlur** into the hero lookup. It returns a **boundary case**: two offices, which to try first. *"That is the answer a tout charges for. It is free, before I have entered anything."* |
 | 0:14 | Open Lakshmi's case. Speak the Kannada-English line: *"naanu appa house-na khata transfer maadbeku…"* The parse appears — inheritance, sale-blocked, Brookefield — with the matched cues shown. |
 | 0:26 | Office resolves: Bengaluru East, Mahadevapura zone. |

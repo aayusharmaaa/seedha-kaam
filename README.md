@@ -2,8 +2,11 @@
 
 **Khata transfer without a middleman.** *Sarkari kaam, seedha.*
 
-> “Papers sariyilla.” Four words at a counter, and nobody will say which paper or
-> which line. That vagueness is the product being sold. This tells you first.
+> **We are not ending bribery. We are making it cheaper :)**
+>
+> The ₹6,000 an agent wants is mostly not a bribe — it is the price of three
+> things nobody told you: which office holds your file, which document is
+> actually wrong, and when your deadline runs out. All three are public.
 
 An independent prototype for one Bengaluru problem: transferring a property khata
 after an inheritance or a purchase, without paying somebody ₹3,000–₹15,000 to be

@@ -463,9 +463,18 @@ export default function Landing({ meta, onStart, starting }) {
         <div className="hero-copy">
           <span className="hero-eyebrow">{t('hero.eyebrow')}</span>
 
+          {/*
+            The wink is not decoration. Read literally, "it" refers to bribery,
+            so the smiley is what marks the line as satire rather than as an
+            offer. It gets its own element and its own colour for that reason,
+            and the gloss immediately below names the ₹6,000 as the AGENT'S FEE
+            so the joke resolves into the actual claim within one line.
+          */}
           <h1 className="hero-head">
             <span className="head-price">{t('hero.price')}</span>
-            <span className="head-claim">{t('hero.claim')}</span>
+            <span className="head-claim">
+              {t('hero.claim')}<span className="wink" aria-hidden="true">:)</span>
+            </span>
           </h1>
 
           <p className="hero-gloss">{t('hero.gloss')}</p>
