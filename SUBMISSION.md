@@ -1,8 +1,8 @@
 # Submission pack
 
-## Project summary (244 words)
+## Project summary (243 words)
 
-We are not ending bribery. We are making it cheaper :)
+We can't end bribery. So we made it cheaper :)
 
 The agent wants ₹6,000. He is selling three things nobody told you: which of
 Bengaluru's five corporations holds your file, which document is actually wrong,
@@ -39,7 +39,7 @@ Phone-sized viewport, network throttled and visible.
 
 | ~sec | Beat |
 |---|---|
-| 0:00 | Land on the hook: **"We are not ending bribery. We are making it cheaper :)"** — then, one line down, what the ₹6,000 actually buys, item by item. |
+| 0:00 | Land on the hook: **"We can't end bribery. So we made it cheaper :)"** — then, one line down, what the ₹6,000 actually buys, item by item. |
 | 0:06 | Type **Domlur** into the hero lookup. It returns a **boundary case**: two offices, which to try first. *"That is the answer a tout charges for. It is free, before I have entered anything."* |
 | 0:14 | Open Lakshmi's case. Speak the Kannada-English line: *"naanu appa house-na khata transfer maadbeku…"* The parse appears — inheritance, sale-blocked, Brookefield — with the matched cues shown. |
 | 0:26 | Office resolves: Bengaluru East, Mahadevapura zone. |

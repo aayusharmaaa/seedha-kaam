@@ -28,8 +28,8 @@ const STRINGS = {
     'banner.link': 'See every mock',
 
     'hero.eyebrow': 'Bengaluru · khata transfer · independent prototype',
-    'hero.price': 'We are not ending bribery.',
-    'hero.claim': 'We are making it cheaper',
+    'hero.price': "We can't end bribery.",
+    'hero.claim': 'So we made it cheaper',
     'hero.gloss': 'The agent wants ₹6,000. Here is what he is actually selling:',
     'hero.item1': 'which office actually holds your file',
     'hero.item2': 'which document is actually wrong',
@@ -199,8 +199,8 @@ const STRINGS = {
     'banner.link': 'ಎಲ್ಲ ನಕಲಿಗಳ ಪಟ್ಟಿ',
 
     'hero.eyebrow': 'ಬೆಂಗಳೂರು · ಖಾತಾ ವರ್ಗಾವಣೆ · ಸ್ವತಂತ್ರ ಮಾದರಿ',
-    'hero.price': 'ನಾವು ಲಂಚವನ್ನು ಕೊನೆಗಾಣಿಸುತ್ತಿಲ್ಲ.',
-    'hero.claim': 'ಅದನ್ನು ಅಗ್ಗ ಮಾಡುತ್ತಿದ್ದೇವೆ',
+    'hero.price': 'ಲಂಚವನ್ನು ನಿಲ್ಲಿಸಲು ನಮ್ಮಿಂದ ಆಗಲ್ಲ.',
+    'hero.claim': 'ಹಾಗಾಗಿ ಅದನ್ನು ಅಗ್ಗ ಮಾಡಿದೆವು',
     'hero.gloss': 'ಏಜೆಂಟ್ ₹6,000 ಕೇಳುತ್ತಾನೆ. ಅವನು ನಿಜವಾಗಿ ಮಾರುತ್ತಿರುವುದು ಇದನ್ನು:',
     'hero.item1': 'ನಿಮ್ಮ ಕಡತ ನಿಜವಾಗಿ ಯಾವ ಕಚೇರಿಯಲ್ಲಿದೆ',
     'hero.item2': 'ನಿಜವಾಗಿ ಯಾವ ದಾಖಲೆ ತಪ್ಪಾಗಿದೆ',
@@ -370,8 +370,8 @@ const STRINGS = {
     'banner.link': 'हर नकली चीज़ देखें',
 
     'hero.eyebrow': 'बेंगलुरु · खाता हस्तांतरण · स्वतंत्र प्रोटोटाइप',
-    'hero.price': 'हम रिश्वत खत्म नहीं कर रहे।',
-    'hero.claim': 'हम उसे सस्ता कर रहे हैं',
+    'hero.price': 'रिश्वत हम खत्म नहीं कर सकते।',
+    'hero.claim': 'इसलिए उसे सस्ता कर दिया',
     'hero.gloss': 'एजेंट ₹6,000 माँगता है। वह असल में यह बेच रहा है:',
     'hero.item1': 'आपकी फाइल असल में किस कार्यालय के पास है',
     'hero.item2': 'असल में कौन-सा दस्तावेज़ गलत है',
