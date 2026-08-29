@@ -120,7 +120,7 @@ export function SiteNav() {
         <a href="#/rulebook">{t('nav.ledger')}</a>
         <a href="#/index">{t('nav.index')}</a>
         <LanguageSwitch compact />
-        <a className="nav-cta" href="#personas" onClick={(e) => { e.preventDefault(); scrollToPersonas(); }}>{t('nav.start')}</a>
+        <a className="nav-cta" href="#/start">{t('nav.start')}</a>
       </nav>
     </header>
   );
@@ -284,15 +284,7 @@ export function useHashRoute() {
 
 /** Scroll to the three demo persona cards on the landing page. */
 export function scrollToPersonas() {
-  const go = () => document.getElementById('personas')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  const route = window.location.hash.replace(/^#/, '') || '/';
-  if (route !== '/') {
-    window.location.hash = '#/';
-    window.addEventListener('hashchange', go, { once: true });
-    setTimeout(go, 200);
-  } else {
-    go();
-  }
+  document.getElementById('personas')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 /**

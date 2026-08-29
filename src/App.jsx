@@ -4,7 +4,21 @@ import { warmVoices } from './speech.js';
 import Landing from './Landing.jsx';
 import Journey from './Journey.jsx';
 import { FrictionIndexPage, HowPage, MocksPage, RulebookPage } from './Pages.jsx';
-import { LanguageProvider, MockBanner, Notice, OfflineBar, useHashRoute, useLang } from './ui.jsx';
+import { LanguageProvider, MockBanner, Notice, OfflineBar, scrollToPersonas, useHashRoute, useLang } from './ui.jsx';
+
+function CaseGate() {
+  useEffect(() => {
+    window.location.hash = '#/start';
+  }, []);
+  return (
+    <main className="page">
+      <Notice tone="info" title="No case open in this tab">
+        <p>Pick one of the three demo cases on the home page — Lakshmi, Imran, or Sarala.</p>
+        <p><a className="btn primary" href="#/start">Pick a demo case</a></p>
+      </Notice>
+    </main>
+  );
+}
 
 function Shell() {
   const { language } = useLang();
@@ -54,16 +68,18 @@ function Shell() {
   if (route.startsWith('/index')) return <FrictionIndexPage />;
   if (route.startsWith('/how')) return <HowPage />;
 
+  if (route.startsWith('/start') || route.startsWith('/personas')) {
+    return (
+      <>
+        {error && <div className="page"><Notice tone="error">{error}</Notice></div>}
+        <Landing meta={meta} onStart={start} starting={starting} focusPersonas />
+      </>
+    );
+  }
+
   if (route.startsWith('/case')) {
     if (!caseData) {
-      return (
-        <main className="page">
-          <Notice tone="info" title="No case open in this tab">
-            <p>Cases live in memory for three hours and are not shared between tabs — that is deliberate. Start one from the home page.</p>
-            <p><a className="btn primary" href="#/">Go back</a></p>
-          </Notice>
-        </main>
-      );
+      return <CaseGate />;
     }
     return <Journey caseData={caseData} setCaseData={setCaseData} meta={meta} onExit={exit} onRestart={restart} />;
   }

@@ -564,11 +564,23 @@ function Honesty({ meta }) {
  * Page
  * ------------------------------------------------------------------ */
 
-export default function Landing({ meta, onStart, starting }) {
+export default function Landing({ meta, onStart, starting, focusPersonas }) {
   const { t } = useLang();
   // Opts the hero into its entrance animation after mount, and back out once
   // the sequence has played. See useStagedEntrance.
   const heroRef = useStagedEntrance(3600);
+
+  useEffect(() => {
+    if (!focusPersonas) return;
+    const scroll = () => scrollToPersonas();
+    scroll();
+    const retry = window.setTimeout(scroll, 400);
+    const tidy = window.setTimeout(() => { window.location.hash = '#/'; }, 600);
+    return () => {
+      window.clearTimeout(retry);
+      window.clearTimeout(tidy);
+    };
+  }, [focusPersonas]);
   return (
     <>
       <SiteNav />
@@ -626,7 +638,7 @@ export default function Landing({ meta, onStart, starting }) {
           <p className="hero-sub">{t('hero.sub')}</p>
 
           <div className="hero-actions">
-            <Button kind="primary big" onClick={scrollToPersonas}>
+            <Button kind="primary big" onClick={() => { window.location.hash = '#/start'; }}>
               {t('hero.cta')} <span aria-hidden="true">→</span>
             </Button>
           </div>
@@ -654,7 +666,7 @@ export default function Landing({ meta, onStart, starting }) {
       <section className="closer">
         <p>{t('closer.lead')}</p>
         <h2>{t('closer.punch')}</h2>
-        <Button kind="primary big" onClick={scrollToPersonas}>
+        <Button kind="primary big" onClick={() => { window.location.hash = '#/start'; }}>
           {t('hero.cta')} <span aria-hidden="true">→</span>
         </Button>
       </section>
