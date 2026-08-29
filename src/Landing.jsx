@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { api } from './api.js';
-import { Brand, Button, Counter, FlowArrow, LanguageSwitch, Reveal, RingStat, SiteFooter, SiteNav, SpeakButton, useLang, useStagedEntrance, rupees } from './ui.jsx';
+import { Brand, Button, Counter, FlowArrow, LanguageSwitch, Reveal, RingStat, scrollToPersonas, SiteFooter, SiteNav, SpeakButton, useLang, useStagedEntrance, rupees } from './ui.jsx';
 
 function officeMapsHref(candidate) {
   return candidate.mapsUrl
@@ -626,7 +626,7 @@ export default function Landing({ meta, onStart, starting }) {
           <p className="hero-sub">{t('hero.sub')}</p>
 
           <div className="hero-actions">
-            <Button kind="primary big" onClick={() => onStart('lakshmi')} busy={starting === 'lakshmi'}>
+            <Button kind="primary big" onClick={scrollToPersonas}>
               {t('hero.cta')} <span aria-hidden="true">→</span>
             </Button>
           </div>
@@ -654,7 +654,7 @@ export default function Landing({ meta, onStart, starting }) {
       <section className="closer">
         <p>{t('closer.lead')}</p>
         <h2>{t('closer.punch')}</h2>
-        <Button kind="primary big" onClick={() => onStart('lakshmi')} busy={starting === 'lakshmi'}>
+        <Button kind="primary big" onClick={scrollToPersonas}>
           {t('hero.cta')} <span aria-hidden="true">→</span>
         </Button>
       </section>
