@@ -224,7 +224,7 @@ export function FrictionIndexPage() {
                 <div className={`index-row ${row.slaMetRate < 0.5 ? 'poor' : row.slaMetRate < 0.8 ? 'mid' : 'good'}`} key={`${row.office}-${row.service}`}>
                   <div className="ir-office">
                     <strong>{row.office}</strong>
-                    <span>{row.corporation} · {row.cases} cases{row.liveCases ? ` · ${row.liveCases} from this deployment` : ''}</span>
+                    <span>{row.corporation} · {row.cases} {row.cases === 1 ? 'case' : 'cases'}{row.liveCases ? ` · ${row.liveCases} from this deployment` : ''}</span>
                   </div>
                   <div className="ir-bar">
                     <div className="ir-fill" style={{ width: `${(row.medianDays / max) * 100}%` }} />

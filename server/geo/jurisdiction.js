@@ -192,6 +192,7 @@ export const GAZETTEER = [
   { name: 'Hennur', lat: 13.0400, lng: 77.6400, ward: 'BBMP Ward 24 (Thanisandra)' },
   { name: 'Horamavu', lat: 13.0290, lng: 77.6580, ward: 'BBMP Ward 25 (Ramamurthy Nagar)' },
   { name: 'Kothanur', lat: 13.0630, lng: 77.6440, ward: 'BBMP Ward 23 (Byatarayanapura)' },
+  { name: 'Byatarayanapura', lat: 13.0650, lng: 77.5940, ward: 'BBMP Ward 23 (Byatarayanapura)' },
   { name: 'Yeshwanthpur', lat: 13.0284, lng: 77.5401, ward: 'BBMP Ward 65 (Yeshwanthpura)' },
   { name: 'Peenya', lat: 13.0280, lng: 77.5190, ward: 'BBMP Ward 40 (Peenya Industrial Area)' },
   { name: 'Jalahalli', lat: 13.0430, lng: 77.5310, ward: 'BBMP Ward 39 (Jalahalli)' },

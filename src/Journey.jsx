@@ -783,6 +783,8 @@ function ClockStep({ caseData, setCaseData, onNext, onBack }) {
     finally { setBusy(false); }
   };
 
+  const days = status ? (status.breached ? status.daysOverdue : Math.max(0, status.remainingDays)) : null;
+
   const fmt = (iso) => new Date(iso).toLocaleDateString(language === 'kn' ? 'kn-IN' : language === 'hi' ? 'hi-IN' : 'en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
 
   if (!clock) {
@@ -812,8 +814,11 @@ function ClockStep({ caseData, setCaseData, onNext, onBack }) {
       <div className={`clock-face ${status?.state || 'running'}`}>
         <div className="clock-ring" style={{ '--pct': Math.round((status?.progress ?? 0) * 100) }}>
           <div className="clock-inner">
-            <strong>{status ? (status.breached ? status.daysOverdue : Math.max(0, status.remainingDays)) : '—'}</strong>
-            <span>{status?.breached ? t('clock.overdue') : t('clock.remaining')}</span>
+            <strong>{days === null ? '—' : days}</strong>
+            {/* "1 DAYS OVERDUE" is the first thing a close-up of this ring shows. */}
+            <span>{status?.breached
+              ? t(days === 1 ? 'clock.overdue1' : 'clock.overdue')
+              : t(days === 1 ? 'clock.remaining1' : 'clock.remaining')}</span>
           </div>
         </div>
         <div className="clock-facts">

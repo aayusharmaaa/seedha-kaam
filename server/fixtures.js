@@ -310,7 +310,7 @@ export const PERSONAS = {
     headlineKn: 'ತಂದೆಯ ಮನೆ ವಾರಸಾಗಿ ಬಂದಿದೆ. ಖಾತಾ ತನ್ನ ಹೆಸರಿಗೆ ಬರುವವರೆಗೆ ಮಾರಲಾಗದು.',
     headlineHi: 'पिता का घर विरासत में मिला। खाता अपने नाम आए बिना बेच नहीं सकतीं।',
     quotedByAgent: 6000,
-    spokenIntake: 'Sir, naanu appa house-na khata transfer maadbeku. Appa theerikondru last November. Mane maarbeku, adakke khata na hesaru change aagbeku. Papers ella ideve.',
+    spokenIntake: 'Sir, naanu appa house-na khata transfer maadbeku. Appa theerikondru last November. Mane Brookefield alli ide, adanna maarbeku, adakke khata na hesaru change aagbeku. Papers ella ideve.',
     spokenIntakeGloss: 'I need to transfer my father\'s house khata. He passed away last November. I want to sell the house, so the khata has to come into my name. I have all the papers.',
     declared: { willExists: false, willProbated: false, relationshipToOwner: 'daughter' },
     documents: lakshmiDocuments
@@ -344,7 +344,7 @@ export const PERSONAS = {
     headlineKn: '1996ರ ಕ್ರಯಪತ್ರ, ಎಂದೂ ನೋಂದಣಿಯಾಗಿಲ್ಲ. ಕಠಿಣ ಪ್ರಕರಣ — ಇಲ್ಲಿ ಸತ್ಯ ಹೇಳುವುದೇ ಮುಖ್ಯ.',
     headlineHi: '1996 का विलेख, कभी पंजीकृत नहीं हुआ। कठिन मामला — और यहीं सच बोलना सबसे ज़रूरी है।',
     quotedByAgent: 25000,
-    spokenIntake: 'Namma manege khata illa. Ganda theerikondru. Yaaro heltaare 25 saavira kotre maadi kodtivi anta.',
+    spokenIntake: 'Namma manege khata illa. Ganda theerikondru. Byatarayanapura alli mane ide. Yaaro heltaare 25 saavira kotre maadi kodtivi anta.',
     spokenIntakeGloss: 'Our house has no khata. My husband passed away. Someone says they will get it done if I pay twenty-five thousand.',
     declared: { willExists: true, willProbated: false, relationshipToOwner: 'spouse' },
     documents: saralaDocuments
