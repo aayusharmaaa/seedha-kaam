@@ -301,12 +301,6 @@ button:disabled { cursor: not-allowed; opacity: .5; }
    offer, so it is set at reading size and in full-strength ink. */
 .hero-gloss { margin: 1.3rem 0 .85rem; font-size: 1.04rem; color: var(--ink); max-width: 46ch; }
 
-.wink {
-  display: inline-block; margin-left: .18em;
-  font-family: var(--sans); font-weight: 500; font-size: .5em;
-  color: var(--deep-2); vertical-align: .42em; letter-spacing: -.04em;
-  transform: rotate(4deg);
-}
 
 /* The three facts. Numbered, because "three things" is a promise the eye should
    be able to check. */

@@ -2,7 +2,7 @@
 
 **Khata transfer without a middleman.** *Sarkari kaam, seedha.*
 
-> **We can't end bribery. So we made it cheaper :)**
+> **We can't end bribery. So we made it cheaper.**
 >
 > The ₹6,000 an agent wants is mostly not a bribe — it is the price of three
 > things nobody told you: which office holds your file, which document is
