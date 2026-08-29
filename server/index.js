@@ -9,7 +9,7 @@ import { buildPersonaCase, PERSONAS, PERSONA_IDS } from './fixtures.js';
 import { evaluateCase, withPassVerdict } from './engine/compliance.js';
 import { LANGUAGES, ledgerStats, DEFECTS, explain } from './engine/ledger.js';
 import { RULE_PACK_VERSION, RULES, VARIANTS, DOCUMENT_KINDS, TAX_YEARS_REQUIRED } from './rules/khata-transfer.v1.js';
-import { resolveJurisdiction, GEO_META, GAZETTEER } from './geo/jurisdiction.js';
+import { resolveJurisdiction, GEO_META, GEO_MAP, GAZETTEER } from './geo/jurisdiction.js';
 import { attachClock, clockStatus, escalationFacts, SERVICE_SLA, ESCALATION_LADDER } from './engine/clock.js';
 import { extractDocument, coerceFields, extractionMode, fieldTemplate, FIELD_TEMPLATES, classifyByFileName } from './extract.js';
 import { parseIntake } from './intake.js';
@@ -82,6 +82,7 @@ app.get('/api/meta', (_req, res) => ok(res, {
   taxYearsRequired: TAX_YEARS_REQUIRED,
   extraction: extractionMode(),
   geo: GEO_META,
+  geoMap: GEO_MAP,
   localities: GAZETTEER.map((entry) => entry.name).sort(),
   sla: SERVICE_SLA['khata-transfer'],
   escalationLadder: ESCALATION_LADDER,
@@ -464,7 +465,8 @@ app.get('/api/cases/:caseId/escalation/:rung.pdf', withCase, (req, res, next) =>
  * ------------------------------------------------------------------ */
 
 const dist = path.resolve(__dirname, '../dist');
-if (existsSync(dist)) {
+// On Vercel, static assets are served from dist/ by the CDN; this app only handles /api.
+if (!process.env.VERCEL && existsSync(dist)) {
   app.use(express.static(dist, {
     setHeaders: (res, filePath) => {
       const name = path.basename(filePath);
@@ -494,10 +496,14 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: 'Something went wrong on our side. Nothing about your case was lost or sent anywhere.' });
 });
 
-app.listen(port, () => {
-  const mode = extractionMode();
-  console.log(`Seedha Kaam listening on ${port}`);
-  console.log(`  rule pack     ${RULE_PACK_VERSION} · ${RULES.length} rules · ${ledgerStats().codes} defect codes · ${LANGUAGES.length} languages`);
-  console.log(`  extraction    ${mode.mode}${mode.model ? ` (${mode.model})` : ''}`);
-  console.log(`  jurisdiction  ${GEO_META.corporations} corporations · ${GEO_META.localities} localities`);
-});
+if (!process.env.VERCEL) {
+  app.listen(port, () => {
+    const mode = extractionMode();
+    console.log(`Seedha Kaam listening on ${port}`);
+    console.log(`  rule pack     ${RULE_PACK_VERSION} · ${RULES.length} rules · ${ledgerStats().codes} defect codes · ${LANGUAGES.length} languages`);
+    console.log(`  extraction    ${mode.mode}${mode.model ? ` (${mode.model})` : ''}`);
+    console.log(`  jurisdiction  ${GEO_META.corporations} corporations · ${GEO_META.localities} localities`);
+  });
+}
+
+export default app;

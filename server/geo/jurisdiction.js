@@ -326,18 +326,32 @@ export function resolveJurisdiction(input = {}) {
 
 function describe(corporation, address, matched, edgeKm, note) {
   const zone = pickZone(corporation, matched ? `${address || ''} ${matched.name}` : address || '');
+  const office = zone.office;
   return {
     corporationId: corporation.id,
     corporation: corporation.name,
     corporationKn: corporation.nameKn,
     corporationHi: corporation.nameHi,
     zone: zone.name,
-    office: zone.office,
+    office,
+    mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${office}, Bengaluru, Karnataka, India`)}`,
     previousWard: matched?.ward || null,
     distanceToBoundaryKm: Number(edgeKm.toFixed(2)),
     note: note || null
   };
 }
+
+export const GEO_BOUNDS = { minLat: 12.75, maxLat: 13.19, minLng: 77.35, maxLng: 77.87 };
+
+export const GEO_MAP = {
+  bounds: GEO_BOUNDS,
+  corporations: CORPORATIONS.map((corporation) => ({
+    id: corporation.id,
+    label: corporation.id.charAt(0).toUpperCase() + corporation.id.slice(1),
+    polygon: corporation.polygon
+  })),
+  density: GAZETTEER.map(({ lat, lng }) => ({ lat, lng }))
+};
 
 export const GEO_META = {
   corporations: CORPORATIONS.length,

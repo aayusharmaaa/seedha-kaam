@@ -87,8 +87,8 @@ export function BrandMark({ size = 30 }) {
       {/* the long way round */}
       <path d="M7 20.5C9.5 8.5 20.5 8.5 24 18.5" className="glyph-detour" fill="none" strokeWidth="2" strokeLinecap="round" strokeDasharray="2.6 3.2" />
       {/* seedha — straight through */}
-      <path d="M7 20.5h14.5" className="glyph-straight" fill="none" strokeWidth="3" strokeLinecap="round" />
-      <path d="m18.5 16.8 4.2 3.7-4.2 3.7" className="glyph-straight" fill="none" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M7 20.5h14.5" className="glyph-straight glyph-line" fill="none" strokeWidth="3" strokeLinecap="round" />
+      <path d="m18.5 16.8 4.2 3.7-4.2 3.7" className="glyph-straight glyph-arrow" fill="none" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -453,3 +453,99 @@ export function OfflineBar() {
 }
 
 export const rupees = (n) => `₹${Number(n).toLocaleString('en-IN')}`;
+
+/* ------------------------------------------------------------------ *
+ * Infographics — animated SVG primitives for landing sections
+ * ------------------------------------------------------------------ */
+
+/** Animated donut chart. Segments: [{ value, color, label }]. */
+export function DonutChart({ segments, size = 160, stroke = 18, className = '' }) {
+  const total = segments.reduce((sum, s) => sum + s.value, 0) || 1;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  let offset = 0;
+
+  return (
+    <svg className={`donut ${className}`} viewBox={`0 0 ${size} ${size}`} width={size} height={size} role="img" aria-hidden="true">
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,.1)" strokeWidth={stroke} />
+      {segments.map((seg, i) => {
+        const len = (seg.value / total) * c;
+        const dash = `${len} ${c - len}`;
+        const rot = (offset / total) * 360 - 90;
+        offset += seg.value;
+        return (
+          <circle
+            key={seg.label || i}
+            className="donut-seg"
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            fill="none"
+            stroke={seg.color}
+            strokeWidth={stroke}
+            strokeDasharray={dash}
+            strokeDashoffset={0}
+            transform={`rotate(${rot} ${size / 2} ${size / 2})`}
+            style={{ '--seg-len': len, '--seg-c': c, animationDelay: `${i * 0.12}s` }}
+          />
+        );
+      })}
+    </svg>
+  );
+}
+
+/** Horizontal bar for comparisons. Value 0–100. */
+export function CompareBar({ value, color = 'var(--deep)', label, sublabel, delay = 0 }) {
+  return (
+    <div className="compare-bar" style={{ '--bar-delay': `${delay}ms` }}>
+      <div className="compare-bar-head">
+        <span className="compare-bar-label">{label}</span>
+        {sublabel && <span className="compare-bar-sub">{sublabel}</span>}
+      </div>
+      <div className="compare-bar-track">
+        <div className="compare-bar-fill" style={{ '--pct': value, '--bar-color': color }} />
+      </div>
+    </div>
+  );
+}
+
+/** Circular progress ring for stat highlights. */
+export function RingStat({ value, max = 100, size = 72, stroke = 5, color = 'var(--deep)', children }) {
+  const pct = Math.min(100, (value / max) * 100);
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  return (
+    <div className="ring-stat" style={{ '--ring-pct': pct, '--ring-color': color, width: size, height: size }}>
+      <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} aria-hidden="true">
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--line)" strokeWidth={stroke} />
+        <circle
+          className="ring-stat-fill"
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke={color}
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={c * (1 - pct / 100)}
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        />
+      </svg>
+      <span className="ring-stat-inner">{children}</span>
+    </div>
+  );
+}
+
+/** Animated flow arrow for architecture diagrams. */
+export function FlowArrow({ active }) {
+  return (
+    <div className={`flow-arrow ${active ? 'active' : ''}`} aria-hidden="true">
+      <svg viewBox="0 0 48 24" width="48" height="24" fill="none">
+        <path className="flow-arrow-line" d="M2 12h38" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path className="flow-arrow-head" d="M34 6l8 6-8 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <circle className="flow-arrow-dot" cx="12" cy="12" r="3" fill="var(--lime)" />
+      </svg>
+    </div>
+  );
+}

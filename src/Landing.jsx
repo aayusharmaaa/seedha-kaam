@@ -1,6 +1,11 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { api } from './api.js';
-import { Brand, Button, Counter, LanguageSwitch, Reveal, SiteFooter, SiteNav, SpeakButton, useLang, useStagedEntrance, rupees } from './ui.jsx';
+import { Brand, Button, Counter, FlowArrow, LanguageSwitch, Reveal, RingStat, SiteFooter, SiteNav, SpeakButton, useLang, useStagedEntrance, rupees } from './ui.jsx';
+
+function officeMapsHref(candidate) {
+  return candidate.mapsUrl
+    || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${candidate.office}, Bengaluru, Karnataka, India`)}`;
+}
 
 /* ------------------------------------------------------------------ *
  * The hero's live office lookup.
@@ -20,7 +25,9 @@ function OfficeLookup() {
   const [error, setError] = useState('');
   const [localities, setLocalities] = useState([]);
 
-  useEffect(() => { api.meta().then((m) => setLocalities(m.localities || [])).catch(() => {}); }, []);
+  useEffect(() => {
+    api.meta().then((m) => setLocalities(m.localities || [])).catch(() => {});
+  }, []);
 
   const run = async (address) => {
     const query = (address ?? value).trim();
@@ -41,7 +48,7 @@ function OfficeLookup() {
         <p>{t('lookup.sub')}</p>
       </div>
 
-      <form className="lookup-form" onSubmit={(e) => { e.preventDefault(); run(); }}>
+      <form className={`lookup-form ${busy ? 'is-busy' : ''}`} onSubmit={(e) => { e.preventDefault(); run(); }}>
         <input
           value={value}
           onChange={(e) => setValue(e.target.value)}
@@ -54,18 +61,13 @@ function OfficeLookup() {
           {localities.map((name) => <option key={name} value={name} />)}
         </datalist>
         <Button type="submit" busy={busy}>{busy ? t('lookup.trying') : t('lookup.button')}</Button>
+        {busy && <div className="lookup-scan" aria-hidden="true"><span /><span /><span /></div>}
       </form>
 
-      {/* Place names stay as they are written on a document. The last chip is a
-          deliberate one: the resolver refusing to answer is as much a feature as
-          the resolver answering, so it gets a button of its own. */}
       <div className="lookup-chips">
         {['Brookefield', 'Domlur', 'Yelahanka', 'Electronic City'].map((chip) => (
           <button key={chip} type="button" onClick={() => { setValue(chip); run(chip); }}>{chip}</button>
         ))}
-        <button type="button" className="chip-unknown" onClick={() => { setValue('behind the big tree'); run('behind the big tree'); }}>
-          {t('lookup.unknownChip')}
-        </button>
       </div>
 
       {error && <p className="lookup-error">{error}</p>}
@@ -83,13 +85,16 @@ function OfficeLookup() {
           </div>
 
           {result.candidates?.map((candidate, index) => (
-            <div className="office-card" key={candidate.corporationId}>
+            <div className="office-card" key={candidate.corporationId} style={{ '--card-i': index }}>
               {result.candidates.length > 1 && (
                 <span className="office-order">{index === 0 ? t('office.tryFirst') : t('office.alternate')}</span>
               )}
               <strong>{candidate.corporation}</strong>
               <span className="office-zone">{candidate.zone}</span>
               <span className="office-counter">{candidate.office}</span>
+              <a className="office-maps" href={officeMapsHref(candidate)} target="_blank" rel="noopener noreferrer">
+                Open in Google Maps <span aria-hidden="true">↗</span>
+              </a>
               {index === 0 && candidate.previousWard && <span className="office-ward">Formerly {candidate.previousWard}</span>}
             </div>
           ))}
@@ -179,6 +184,34 @@ function PriceContrast() {
         </p>
       </div>
 
+      <Reveal className="price-viz" delay={0}>
+        <div className="price-compare">
+          <div className="price-col agent">
+            <span className="price-col-label">What agents quote</span>
+            <div className="price-stack">
+              <div className="price-stack-bar" style={{ '--h': 100 }}>
+                <span>₹3,000–15,000</span>
+              </div>
+            </div>
+            <em>Opaque bundle — no itemisation</em>
+          </div>
+          <div className="price-col-arrow" aria-hidden="true">
+            <svg viewBox="0 0 32 24" width="32" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M4 12h20M20 7l6 5-6 5" />
+            </svg>
+          </div>
+          <div className="price-col state">
+            <span className="price-col-label">What the state charges</span>
+            <div className="price-stack">
+              <div className="price-stack-bar zero" style={{ '--h': 8 }}><span>₹0</span></div>
+              <div className="price-stack-bar zero" style={{ '--h': 8 }}><span>₹0</span></div>
+              <div className="price-stack-bar zero" style={{ '--h': 8 }}><span>₹0</span></div>
+            </div>
+            <em>Three public facts — already yours</em>
+          </div>
+        </div>
+      </Reveal>
+
       <ol className="tax-list">
         <Reveal as="li" delay={0}>
           <span className="tax-what">Which of the five corporations holds your record</span>
@@ -221,22 +254,29 @@ function PriceContrast() {
 
 function Evidence() {
   const { locale } = useLang();
+  const [hovered, setHovered] = useState(null);
   const spoken = 'Forty per cent of bribes paid in India are for property registration and land. But thirty eight per cent of people say they paid because it was the only way to get their work done. That is not a moral problem. It is a friction problem.';
+  const stats = [
+    { id: 'property', to: 40, label: 'of bribes paid in India are for property registration and land — the largest single category, ahead of police and municipal services.', big: true },
+    { id: 'only-way', to: 38, label: <>of people who paid say it was <em>the only way to get their work done</em>.</> },
+    { id: 'forced', to: 54, label: <>of businesses report being <em>forced</em> to pay. That is extortion, not willing bribery.</> }
+  ];
   return (
     <section className="evidence" id="why">
       <div className="evidence-grid">
-        <Reveal className="stat big" delay={0}>
-          <span className="stat-num"><Counter to={40} /><i>%</i></span>
-          <span className="stat-label">of bribes paid in India are for property registration and land — the largest single category, ahead of police and municipal services.</span>
-        </Reveal>
-        <Reveal className="stat" delay={130}>
-          <span className="stat-num"><Counter to={38} /><i>%</i></span>
-          <span className="stat-label">of people who paid say it was <em>the only way to get their work done</em>.</span>
-        </Reveal>
-        <Reveal className="stat" delay={260}>
-          <span className="stat-num"><Counter to={54} /><i>%</i></span>
-          <span className="stat-label">of businesses report being <em>forced</em> to pay. That is extortion, not willing bribery.</span>
-        </Reveal>
+        {stats.map((stat, index) => (
+          <Reveal
+            key={stat.id}
+            className={`stat ${stat.big ? 'big' : ''} ${hovered === stat.id ? 'hovered' : ''}`}
+            delay={index * 130}
+            onMouseEnter={() => setHovered(stat.id)}
+            onMouseLeave={() => setHovered(null)}
+          >
+            <span className="stat-num"><Counter to={stat.to} /><i>%</i></span>
+            <span className="stat-label">{stat.label}</span>
+            <span className="stat-bar" style={{ '--stat-pct': stat.to }} aria-hidden="true" />
+          </Reveal>
+        ))}
       </div>
       <div className="evidence-claim">
         <p>
@@ -284,6 +324,67 @@ const MECHANICS = [
   }
 ];
 
+const OFFICE_ZONES = [
+  { name: 'East', x: 20, y: 22 },
+  { name: 'West', x: 102, y: 22, highlight: true },
+  { name: 'North', x: 184, y: 22 },
+  { name: 'South', x: 20, y: 86 },
+  { name: 'Central', x: 184, y: 86 }
+];
+
+function MechanicsVisual({ id }) {
+  if (id === 'office') {
+    return (
+      <div className="mech-viz office-viz" aria-hidden="true">
+        <svg viewBox="0 0 280 148" className="mech-svg">
+          <rect className="mv-bg" x="8" y="8" width="264" height="132" rx="10" />
+          {OFFICE_ZONES.map((zone) => (
+            <g key={zone.name} className={zone.highlight ? 'mv-zone active' : 'mv-zone'}>
+              <rect x={zone.x} y={zone.y} width="74" height="48" rx="6" />
+              <text x={zone.x + 37} y={zone.y + 28} textAnchor="middle">{zone.name}</text>
+            </g>
+          ))}
+          <circle className="mv-pin" cx="139" cy="74" r="7" />
+          <circle className="mv-pulse" cx="139" cy="74" r="7" />
+          <path className="mv-route" d="M139 81v10" />
+          <rect className="mv-office" x="107" y="98" width="64" height="22" rx="5" />
+          <text className="mv-office-label" x="139" y="112" textAnchor="middle">Mahadevapura</text>
+        </svg>
+      </div>
+    );
+  }
+  if (id === 'papers') {
+    return (
+      <div className="mech-viz papers-viz" aria-hidden="true">
+        <div className="mv-docs">
+          {['Sale deed', 'EC', 'Tax receipt', 'ID', 'NOC'].map((doc, i) => (
+            <span key={doc} className="mv-doc" style={{ '--doc-i': i }}>{doc}</span>
+          ))}
+        </div>
+        <div className="mv-checks">
+          <span className="mv-check block"><i>2</i> blocking</span>
+          <span className="mv-check warn"><i>1</i> objection</span>
+          <span className="mv-check ok"><i>5</i> advisory</span>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="mech-viz clock-viz" aria-hidden="true">
+      <svg viewBox="0 0 100 48" className="mech-svg">
+        <circle className="mv-clock-ring" cx="24" cy="24" r="18" />
+        <circle className="mv-clock-fill" cx="24" cy="24" r="18" />
+        <text className="mv-clock-num" x="24" y="26">31</text>
+        <text className="mv-clock-sub" x="24" y="32">days</text>
+        <path className="mv-arrow-out" d="M46 24h4" />
+        <path className="mv-doc-out" d="M52 14h18v26H52z" />
+        <path className="mv-doc-fold" d="M52 14l7-6h11v6" />
+        <text className="mv-appeal" x="61" y="30">Appeal</text>
+      </svg>
+    </div>
+  );
+}
+
 function Mechanics() {
   const [active, setActive] = useState('office');
   const mechanic = MECHANICS.find((m) => m.id === active);
@@ -305,10 +406,12 @@ function Mechanics() {
             >
               <span className="tab-step">{m.step}</span>
               <span className="tab-title">{m.title}</span>
+              <span className="tab-progress" aria-hidden="true" />
             </button>
           ))}
         </div>
         <div className="mechanics-panel" role="tabpanel" key={active}>
+          <MechanicsVisual id={active} />
           <p className="panel-body">{mechanic.body}</p>
           <div className="panel-proof">
             <span className="proof-label">{mechanic.proofLabel}</span>
@@ -325,6 +428,13 @@ function Mechanics() {
  * ------------------------------------------------------------------ */
 
 function Architecture() {
+  const [activeNode, setActiveNode] = useState(null);
+  const nodes = [
+    { id: 'model', role: 'Model', title: 'Reads a photo into fields', body: 'Every value it reads is shown to you as an editable field first.', cls: 'model' },
+    { id: 'you', role: 'You', title: 'Confirm each value', body: 'Nothing reaches a rule until a human has looked at it.', cls: 'you' },
+    { id: 'engine', role: 'Engine', title: 'Decides, deterministically', body: '46 rules. Same input, same output, every time. Returns a code and an evidence trail.', cls: 'engine' },
+    { id: 'ledger', role: 'Ledger', title: 'Turns the code into your language', body: '47 codes × 3 languages = 141 explanations that exist once, for everybody.', cls: 'ledger' }
+  ];
   return (
     <section className="arch" id="architecture">
       <div className="section-head light">
@@ -336,29 +446,26 @@ function Architecture() {
         </p>
       </div>
       <div className="arch-flow">
-        <Reveal className="arch-node model" delay={0}>
-          <span className="node-role">Model</span>
-          <strong>Reads a photo into fields</strong>
-          <p>Every value it reads is shown to you as an editable field first.</p>
-        </Reveal>
-        <div className="arch-arrow" aria-hidden="true">→</div>
-        <Reveal className="arch-node you" delay={140}>
-          <span className="node-role">You</span>
-          <strong>Confirm each value</strong>
-          <p>Nothing reaches a rule until a human has looked at it.</p>
-        </Reveal>
-        <div className="arch-arrow" aria-hidden="true">→</div>
-        <Reveal className="arch-node engine" delay={280}>
-          <span className="node-role">Engine</span>
-          <strong>Decides, deterministically</strong>
-          <p>46 rules. Same input, same output, every time. Returns a code and an evidence trail.</p>
-        </Reveal>
-        <div className="arch-arrow" aria-hidden="true">→</div>
-        <Reveal className="arch-node ledger" delay={420}>
-          <span className="node-role">Ledger</span>
-          <strong>Turns the code into your language</strong>
-          <p>47 codes × 3 languages = 141 explanations that exist once, for everybody.</p>
-        </Reveal>
+        {nodes.map((node, i) => (
+          <Fragment key={node.id}>
+            <Reveal
+              className={`arch-node ${node.cls} ${activeNode === node.id ? 'active' : ''}`}
+              delay={i * 140}
+              onMouseEnter={() => setActiveNode(node.id)}
+              onMouseLeave={() => setActiveNode(null)}
+              onClick={() => setActiveNode((v) => (v === node.id ? null : node.id))}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveNode((v) => (v === node.id ? null : node.id)); } }}
+            >
+              <span className="node-role">{node.role}</span>
+              <strong>{node.title}</strong>
+              <p>{node.body}</p>
+              <span className="node-glow" aria-hidden="true" />
+            </Reveal>
+            {i < nodes.length - 1 && <FlowArrow active={activeNode === node.id || activeNode === nodes[i + 1].id} />}
+          </Fragment>
+        ))}
       </div>
       <p className="arch-scale">
         That last line is also the scale answer. Because explanations are cached per defect code and not
@@ -431,10 +538,22 @@ function Honesty({ meta }) {
           <a className="btn ghost" href="#/mocks">Read the mock register →</a>
         </div>
         <ul className="honesty-facts">
-          <li><strong><Counter to={meta?.ruleCount ?? 46} /></strong><span>deterministic rules, none of them a model call</span></li>
-          <li><strong><Counter to={meta?.ledger?.codes ?? 47} /></strong><span>defect codes, each with a cited source</span></li>
-          <li><strong><Counter to={meta?.ledger?.unverifiedCitations ?? 12} /></strong><span>of them marked “not traced to a published clause”, because they aren’t</span></li>
-          <li><strong>0</strong><span>government systems contacted, ever</span></li>
+          <li>
+            <RingStat value={meta?.ruleCount ?? 46} max={50} color="var(--deep)"><Counter to={meta?.ruleCount ?? 46} /></RingStat>
+            <span>deterministic rules, none of them a model call</span>
+          </li>
+          <li>
+            <RingStat value={meta?.ledger?.codes ?? 47} max={50} color="var(--deep-2)"><Counter to={meta?.ledger?.codes ?? 47} /></RingStat>
+            <span>defect codes, each with a cited source</span>
+          </li>
+          <li>
+            <RingStat value={meta?.ledger?.unverifiedCitations ?? 12} max={47} color="var(--amber)"><Counter to={meta?.ledger?.unverifiedCitations ?? 12} /></RingStat>
+            <span>of them marked “not traced to a published clause”, because they aren’t</span>
+          </li>
+          <li>
+            <RingStat value={0} max={1} color="var(--ok)"><strong>0</strong></RingStat>
+            <span>government systems contacted, ever</span>
+          </li>
         </ul>
       </div>
     </section>
@@ -510,7 +629,6 @@ export default function Landing({ meta, onStart, starting }) {
             <Button kind="primary big" onClick={() => onStart('lakshmi')} busy={starting === 'lakshmi'}>
               {t('hero.cta')} <span aria-hidden="true">→</span>
             </Button>
-            <a className="btn ghost big" href="#lookup">{t('hero.secondary')}</a>
           </div>
           <span className="hero-microcopy">{t('hero.ctaSub')}</span>
           <p className="hero-who">{t('hero.who')}</p>
