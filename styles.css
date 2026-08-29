@@ -1155,8 +1155,8 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 .cut-side em { font-style: normal; font-size: .7rem; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; font-family: var(--mono); }
 
 .cut-side.was s {
-  position: relative; text-decoration: none;
-  font-family: var(--serif); font-size: 1.5rem; color: var(--muted); letter-spacing: -.02em;
+  position: relative; text-decoration: none; white-space: nowrap;
+  font-family: var(--serif); font-size: 1.15rem; color: var(--muted); letter-spacing: -.02em;
 }
 .cut-side.was s::after {
   content: ""; position: absolute; left: -6%; right: -6%; top: 52%; height: 3px;
@@ -1188,6 +1188,6 @@ button:disabled { cursor: not-allowed; opacity: .5; }
   .shards { height: 112px; }
   .shard { width: 50px; height: 68px; margin: -34px 0 0 -25px; }
   .s1 { --fx: -46px; } .s2 { --fx: -23px; } .s4 { --fx: 23px; } .s5 { --fx: 46px; }
-  .cut-side.was s { font-size: 1.3rem; }
-  .cut-side.now b { font-size: 1.7rem; }
+  .cut-side.was s { font-size: 1rem; }
+  .cut-side.now b { font-size: 1.6rem; }
 }

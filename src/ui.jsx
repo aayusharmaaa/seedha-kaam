@@ -379,30 +379,4 @@ export function OfflineBar() {
   );
 }
 
-/** Counts up to a number. Used exactly once, on the money figure. */
-export function useCountUp(target, duration = 900) {
-  const [value, setValue] = useState(0);
-  const raf = useRef();
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { setValue(target); return undefined; }
-    const start = performance.now();
-    const tick = (now) => {
-      const progress = Math.min(1, (now - start) / duration);
-      const eased = 1 - (1 - progress) ** 3;
-      setValue(Math.round(target * eased));
-      if (progress < 1) raf.current = requestAnimationFrame(tick);
-    };
-    raf.current = requestAnimationFrame(tick);
-
-    // requestAnimationFrame does not run in a background or non-compositing
-    // tab, which would leave the figure showing zero. This number is the
-    // argument of the page; it must land on its real value whether or not the
-    // animation ever got to run.
-    const settle = setTimeout(() => setValue(target), duration + 400);
-    return () => { cancelAnimationFrame(raf.current); clearTimeout(settle); };
-  }, [target, duration]);
-  return value;
-}
-
 export const rupees = (n) => `₹${Number(n).toLocaleString('en-IN')}`;

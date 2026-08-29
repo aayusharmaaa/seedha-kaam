@@ -43,7 +43,9 @@ const STRINGS = {
     'hero.secondary': 'Which office is mine?',
     'cut.scatter': 'Your file, as it stands',
     'cut.gathered': 'Checked, ordered, ready to file',
-    'cut.was': 'the agent',
+    'cut.was': 'the going rate',
+    'closer.lead': 'Thirty-eight per cent pay because it is the only way to get their work done.',
+    'closer.punch': 'We are not ending bribery. We are making it optional.',
     'cut.now': 'with us',
     'cut.refund': 'Refunded in full if your work does not get done.',
 
@@ -212,7 +214,9 @@ const STRINGS = {
     'hero.secondary': 'ನನ್ನ ಕಚೇರಿ ಯಾವುದು?',
     'cut.scatter': 'ಈಗಿನ ಸ್ಥಿತಿಯಲ್ಲಿ ನಿಮ್ಮ ಕಡತ',
     'cut.gathered': 'ಪರಿಶೀಲಿಸಿ, ಕ್ರಮವಾಗಿ ಜೋಡಿಸಿ, ಸಲ್ಲಿಸಲು ಸಿದ್ಧ',
-    'cut.was': 'ಏಜೆಂಟ್',
+    'cut.was': 'ಸಾಮಾನ್ಯ ದರ',
+    'closer.lead': 'ಶೇಕಡಾ 38 ಜನ ಹಣ ಕೊಡುವುದು ಕೆಲಸ ಆಗಲು ಬೇರೆ ದಾರಿಯೇ ಇಲ್ಲದ ಕಾರಣ.',
+    'closer.punch': 'ನಾವು ಲಂಚವನ್ನು ಕೊನೆಗಾಣಿಸುತ್ತಿಲ್ಲ. ಅದನ್ನು ಐಚ್ಛಿಕವಾಗಿಸುತ್ತಿದ್ದೇವೆ.',
     'cut.now': 'ನಮ್ಮ ಜೊತೆ',
     'cut.refund': 'ನಿಮ್ಮ ಕೆಲಸ ಆಗದಿದ್ದರೆ ಪೂರ್ತಿ ಹಣ ವಾಪಸ್.',
 
@@ -381,7 +385,9 @@ const STRINGS = {
     'hero.secondary': 'मेरा कार्यालय कौन-सा है?',
     'cut.scatter': 'अभी आपकी फाइल की हालत',
     'cut.gathered': 'जाँची, क्रम में लगी, जमा करने को तैयार',
-    'cut.was': 'एजेंट',
+    'cut.was': 'चलन का भाव',
+    'closer.lead': '38 प्रतिशत लोग इसलिए देते हैं क्योंकि काम कराने का और कोई रास्ता ही नहीं।',
+    'closer.punch': 'हम रिश्वत खत्म नहीं कर रहे। हम उसे वैकल्पिक बना रहे हैं।',
     'cut.now': 'हमारे साथ',
     'cut.refund': 'आपका काम न हुआ तो पूरा पैसा वापस।',
 

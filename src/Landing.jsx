@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { api } from './api.js';
-import { Brand, Button, LanguageSwitch, Reveal, SiteFooter, SiteNav, SpeakButton, useCountUp, useLang, useStagedEntrance, rupees } from './ui.jsx';
+import { Brand, Button, LanguageSwitch, Reveal, SiteFooter, SiteNav, SpeakButton, useLang, useStagedEntrance, rupees } from './ui.jsx';
 
 /* ------------------------------------------------------------------ *
  * The hero's live office lookup.
@@ -144,7 +144,7 @@ function PriceCut() {
 
       <figcaption className="cut">
         <span className="cut-side was">
-          <s>₹6,000</s>
+          <s>₹3,000&ndash;15,000</s>
           <em>{t('cut.was')}</em>
         </span>
         <span className="cut-arrow" aria-hidden="true">
@@ -168,25 +168,11 @@ function PriceCut() {
  * ------------------------------------------------------------------ */
 
 function PriceContrast() {
-  const [seen, setSeen] = useState(false);
-  const ref = useRef(null);
-  useEffect(() => {
-    const node = ref.current;
-    if (!node || typeof IntersectionObserver === 'undefined') { setSeen(true); return undefined; }
-    const observer = new IntersectionObserver(([entry]) => entry.isIntersecting && setSeen(true), { threshold: 0.4 });
-    observer.observe(node);
-    // The figure is the argument of the page; it must never be left showing
-    // zero because an observer did not fire.
-    const failsafe = setTimeout(() => setSeen(true), 2500);
-    return () => { observer.disconnect(); clearTimeout(failsafe); };
-  }, []);
-  const agent = useCountUp(seen ? 6000 : 0, 1100);
-
   return (
-    <section className="price" ref={ref} id="price">
+    <section className="price" id="price">
       <div className="price-head">
         <span className="kicker">The itemised bill</span>
-        <h2>What the {rupees(agent)} actually buys.</h2>
+        <h2>What that fee actually buys.</h2>
         <p>
           Three facts, each already published by the state, none of them findable by the
           person who needs them. Priced by the state at nothing.
@@ -533,11 +519,14 @@ export default function Landing({ meta, onStart, starting }) {
       <Architecture />
       <Honesty meta={meta} />
 
+      {/* The punchline is a callback: the statistic says a bribe is "the only way",
+          and the answer is the one word that undoes it. Note what it does NOT
+          claim — we are not saying bribery ends, because it does not, and a
+          product whose whole argument is "stop overclaiming" cannot close on an
+          overclaim. */}
       <section className="closer">
-        <p>
-          Thirty-eight per cent pay because it is the only way to get their work done.
-        </p>
-        <h2>So we built the other way.</h2>
+        <p>{t('closer.lead')}</p>
+        <h2>{t('closer.punch')}</h2>
         <Button kind="primary big" onClick={() => onStart('lakshmi')} busy={starting === 'lakshmi'}>
           {t('hero.cta')} <span aria-hidden="true">→</span>
         </Button>
