@@ -52,23 +52,24 @@ function syncCase(payload) {
 async function request(path, { method = 'GET', body, timeout = TIMEOUT_MS } = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
-  const payload = method === 'GET' ? body : withSnapshot(body);
+  const requestBody = method === 'GET' ? body : withSnapshot(body);
   try {
     const response = await fetch(`/api${path}`, {
       method,
-      headers: payload ? { 'Content-Type': 'application/json' } : undefined,
-      body: payload ? JSON.stringify(payload) : undefined,
-      signal: controller.signal
+      headers: requestBody ? { 'Content-Type': 'application/json' } : undefined,
+      body: requestBody ? JSON.stringify(requestBody) : undefined,
+      signal: controller.signal,
+      cache: 'no-store'
     });
-    const payload = await response.json().catch(() => ({}));
+    const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      const error = new Error(payload.error || `Request failed (${response.status})`);
+      const error = new Error(data.error || `Request failed (${response.status})`);
       error.status = response.status;
-      error.expired = Boolean(payload.expired);
-      error.payload = payload;
+      error.expired = Boolean(data.expired);
+      error.payload = data;
       throw error;
     }
-    return payload;
+    return data;
   } catch (error) {
     if (error.name === 'AbortError') {
       throw new Error('That took too long. Your connection may be slow — try once more.');
@@ -82,8 +83,23 @@ async function request(path, { method = 'GET', body, timeout = TIMEOUT_MS } = {}
   }
 }
 
+async function requestWithRetry(path, options = {}, attempts = 3) {
+  let lastError;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    try {
+      return await request(path, options);
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 600 * (attempt + 1)));
+      }
+    }
+  }
+  throw lastError;
+}
+
 export const api = {
-  meta: () => request('/meta'),
+  meta: () => requestWithRetry('/meta'),
   mocks: () => request('/mocks'),
   ledger: (language) => request(`/ledger?language=${encodeURIComponent(language)}`),
   frictionIndex: () => request('/friction-index'),
@@ -92,7 +108,13 @@ export const api = {
   publicLookup: (address) => request('/jurisdiction/lookup', { method: 'POST', body: { address } }),
 
   createCase: (body) => request('/cases', { method: 'POST', body }).then(syncCase),
-  getCase: (id) => request(`/cases/${id}`).then(syncCase),
+  getCase: (id) => request(`/cases/${id}/sync`, { method: 'POST', body: {} })
+    .then(syncCase)
+    .catch((error) => {
+      const local = getStoredCase();
+      if (local?.id === id) return { case: local };
+      throw error;
+    }),
   deleteCase: (id) => request(`/cases/${id}`, { method: 'DELETE' }).then((r) => { setStoredCase(null); return r; }),
   setLanguage: (id, language) => request(`/cases/${id}/language`, { method: 'POST', body: { language } }).then(syncCase),
   setApplicant: (id, body) => request(`/cases/${id}/applicant`, { method: 'POST', body }).then(syncCase),

@@ -43,7 +43,10 @@ const bad = (res, message, status = 400) => res.status(status).json({ error: mes
  * ------------------------------------------------------------------ */
 
 function restoreCaseFromBody(req) {
-  const snapshot = req.body?.caseSnapshot;
+  let snapshot = req.body?.caseSnapshot;
+  if (!snapshot && req.headers['x-case-snapshot']) {
+    try { snapshot = JSON.parse(req.headers['x-case-snapshot']); } catch { /* malformed */ }
+  }
   if (!snapshot || snapshot.id !== req.params.caseId) return null;
   putCase(req.params.caseId, snapshot);
   return getCase(req.params.caseId);
@@ -161,6 +164,9 @@ app.post('/api/cases', (req, res) => {
 });
 
 app.get('/api/cases/:caseId', withCase, (req, res) => ok(res, { case: req.caseData }));
+
+/** POST so Vercel can restore the case from the browser snapshot in the body. */
+app.post('/api/cases/:caseId/sync', withCase, (req, res) => ok(res, { case: req.caseData }));
 
 app.delete('/api/cases/:caseId', (req, res) => {
   deleteCase(req.params.caseId);

@@ -14,7 +14,7 @@
  * would be worse than failing now.
  */
 
-const VERSION = 'seedha-v5';
+const VERSION = 'seedha-v6';
 const SHELL = `${VERSION}-shell`;
 const DATA = `${VERSION}-data`;
 
@@ -48,6 +48,10 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.endsWith('.pdf')) return;
 
   if (url.pathname.startsWith('/api/')) {
+    if (url.pathname === '/api/meta' || url.pathname === '/api/health') {
+      event.respondWith(networkFirst(request));
+      return;
+    }
     event.respondWith(staleWhileRevalidate(request));
     return;
   }
@@ -102,6 +106,22 @@ async function staleWhileRevalidate(request) {
     }),
     { status: 503, headers: { 'Content-Type': 'application/json' } }
   );
+}
+
+async function networkFirst(request) {
+  const cache = await caches.open(DATA);
+  try {
+    const response = await fetch(request);
+    if (response.ok) cache.put(request, response.clone()).catch(() => {});
+    return response;
+  } catch {
+    const cached = await cache.match(request);
+    if (cached) return cached;
+    return new Response(
+      JSON.stringify({ error: 'You are offline.', offline: true }),
+      { status: 503, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
 }
 
 function offlineShell() {

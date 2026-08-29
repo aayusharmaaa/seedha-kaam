@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api, getStoredCaseId, setStoredCase, setStoredCaseId } from './api.js';
+import { api, getStoredCase, getStoredCaseId, setStoredCase, setStoredCaseId } from './api.js';
+import { FALLBACK_META } from './demo-meta.js';
 import { warmVoices } from './speech.js';
 import Landing from './Landing.jsx';
 import Journey from './Journey.jsx';
@@ -23,23 +24,31 @@ function CaseGate() {
 function Shell() {
   const { language } = useLang();
   const [route, navigate] = useHashRoute();
-  const [meta, setMeta] = useState(null);
+  const [meta, setMeta] = useState(FALLBACK_META);
   const [caseData, setCaseData] = useState(null);
   const [starting, setStarting] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
-    api.meta().then(setMeta).catch(() => setError('The service is not responding. If you are running this locally, start it with npm run dev.'));
+    let cancelled = false;
+    api.meta()
+      .then((loaded) => { if (!cancelled) setMeta(loaded); })
+      .catch(() => { /* bundled personas already on screen */ });
     warmVoices();
+    return () => { cancelled = true; };
   }, []);
 
   // Resume a case if this tab already had one.
   useEffect(() => {
     const stored = getStoredCaseId();
     if (!stored) return;
+    const local = getStoredCase();
+    if (local?.id === stored) setCaseData(local);
     api.getCase(stored)
       .then((r) => { setCaseData(r.case); setStoredCase(r.case); })
-      .catch(() => setStoredCaseId(null));
+      .catch(() => {
+        if (!getStoredCase()) setStoredCaseId(null);
+      });
   }, []);
 
   const start = useCallback(async (personaId) => {
@@ -51,7 +60,11 @@ function Shell() {
       setStoredCase(result.case);
       setCaseData(result.case);
       navigate('/case');
-    } catch (e) { setError(e.message); }
+    } catch (e) {
+      setError(e.message.includes('reach the server')
+        ? 'Could not reach the server. If you are running locally, start both halves with npm run dev.'
+        : e.message);
+    }
     finally { setStarting(''); }
   }, [language, navigate]);
 
