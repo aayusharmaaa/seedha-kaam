@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { api } from './api.js';
-import { Brand, Button, LanguageSwitch, Reveal, SiteFooter, SiteNav, SpeakButton, useLang, useStagedEntrance, rupees } from './ui.jsx';
+import { Brand, Button, Counter, LanguageSwitch, Reveal, SiteFooter, SiteNav, SpeakButton, useLang, useStagedEntrance, rupees } from './ui.jsx';
 
 /* ------------------------------------------------------------------ *
  * The hero's live office lookup.
@@ -225,18 +225,18 @@ function Evidence() {
   return (
     <section className="evidence" id="why">
       <div className="evidence-grid">
-        <div className="stat big">
-          <span className="stat-num">40<i>%</i></span>
+        <Reveal className="stat big" delay={0}>
+          <span className="stat-num"><Counter to={40} /><i>%</i></span>
           <span className="stat-label">of bribes paid in India are for property registration and land — the largest single category, ahead of police and municipal services.</span>
-        </div>
-        <div className="stat">
-          <span className="stat-num">38<i>%</i></span>
+        </Reveal>
+        <Reveal className="stat" delay={130}>
+          <span className="stat-num"><Counter to={38} /><i>%</i></span>
           <span className="stat-label">of people who paid say it was <em>the only way to get their work done</em>.</span>
-        </div>
-        <div className="stat">
-          <span className="stat-num">54<i>%</i></span>
+        </Reveal>
+        <Reveal className="stat" delay={260}>
+          <span className="stat-num"><Counter to={54} /><i>%</i></span>
           <span className="stat-label">of businesses report being <em>forced</em> to pay. That is extortion, not willing bribery.</span>
-        </div>
+        </Reveal>
       </div>
       <div className="evidence-claim">
         <p>
@@ -308,7 +308,7 @@ function Mechanics() {
             </button>
           ))}
         </div>
-        <div className="mechanics-panel" role="tabpanel">
+        <div className="mechanics-panel" role="tabpanel" key={active}>
           <p className="panel-body">{mechanic.body}</p>
           <div className="panel-proof">
             <span className="proof-label">{mechanic.proofLabel}</span>
@@ -384,9 +384,11 @@ function Personas({ personas, onStart, starting }) {
         <p>Each one has a complete synthetic document set with real defects in it. The engine has not been told which is which.</p>
       </div>
       <div className="persona-grid">
-        {personas.map((persona) => (
-          <button
+        {personas.map((persona, index) => (
+          <Reveal
+            as="button"
             key={persona.id}
+            delay={index * 110}
             className={`persona-card ${persona.resolvableByPaperwork ? '' : 'hard'}`}
             onClick={() => onStart(persona.id)}
             disabled={Boolean(starting)}
@@ -399,7 +401,7 @@ function Personas({ personas, onStart, starting }) {
               <span className="persona-go">{starting === persona.id ? 'Opening…' : 'Walk this case →'}</span>
             </span>
             {!persona.resolvableByPaperwork && <span className="persona-flag">The hard case — cannot be fixed with better paperwork</span>}
-          </button>
+          </Reveal>
         ))}
       </div>
     </section>
@@ -429,9 +431,9 @@ function Honesty({ meta }) {
           <a className="btn ghost" href="#/mocks">Read the mock register →</a>
         </div>
         <ul className="honesty-facts">
-          <li><strong>{meta?.ruleCount ?? 46}</strong><span>deterministic rules, none of them a model call</span></li>
-          <li><strong>{meta?.ledger?.codes ?? 47}</strong><span>defect codes, each with a cited source</span></li>
-          <li><strong>{meta?.ledger?.unverifiedCitations ?? 0}</strong><span>of them marked “not traced to a published clause”, because they aren’t</span></li>
+          <li><strong><Counter to={meta?.ruleCount ?? 46} /></strong><span>deterministic rules, none of them a model call</span></li>
+          <li><strong><Counter to={meta?.ledger?.codes ?? 47} /></strong><span>defect codes, each with a cited source</span></li>
+          <li><strong><Counter to={meta?.ledger?.unverifiedCitations ?? 12} /></strong><span>of them marked “not traced to a published clause”, because they aren’t</span></li>
           <li><strong>0</strong><span>government systems contacted, ever</span></li>
         </ul>
       </div>

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { makeT, speechLocale, LANGS } from './i18n.js';
 import { speak, stopSpeaking, synthesisSupported } from './speech.js';
 
@@ -315,6 +315,79 @@ export function useStagedEntrance(totalMs = 2600) {
     return () => clearTimeout(done);
   }, [totalMs]);
   return ref;
+}
+
+/**
+ * A number that counts up when it scrolls into view.
+ *
+ * Renders its FINAL value on first paint and only drops to zero inside a
+ * layout effect, so there is no flash of the wrong number and no frame where a
+ * statistic reads as something it is not. If motion is unwelcome, the observer
+ * is unavailable, or nothing ever fires, the real value simply stays on screen.
+ */
+export function Counter({ to, duration = 1200, className }) {
+  const target = Number(to) || 0;
+  const [value, setValue] = useState(target);
+  const ref = useRef(null);
+  const raf = useRef();
+
+  useLayoutEffect(() => {
+    const node = ref.current;
+    if (!node || !motionWelcome() || typeof IntersectionObserver === 'undefined') {
+      setValue(target);
+      return undefined;
+    }
+    if (target === 0) return undefined;   // nothing to count to
+
+    setValue(0);
+    let finished = false;
+    const settle = () => { finished = true; setValue(target); };
+
+    const run = () => {
+      if (finished) return;
+      const start = performance.now();
+      const tick = (now) => {
+        const progress = Math.min(1, (now - start) / duration);
+        setValue(Math.round(target * (1 - (1 - progress) ** 3)));
+        if (progress < 1) raf.current = requestAnimationFrame(tick);
+        else finished = true;
+      };
+      raf.current = requestAnimationFrame(tick);
+    };
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) { observer.disconnect(); run(); }
+    }, { threshold: 0.35 });
+    observer.observe(node);
+
+    // Never leave a statistic reading zero because a frame never came.
+    const failsafe = setTimeout(settle, 5000);
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(raf.current);
+      clearTimeout(failsafe);
+    };
+  }, [target, duration]);
+
+  return <span ref={ref} className={className}>{value}</span>;
+}
+
+/**
+ * Returns 0 on the first paint and the real value on the next frame, so a CSS
+ * transition has something to travel from. Used for the progress rings, whose
+ * fill is a custom property rather than a layout value.
+ *
+ * Falls straight through to the real value when motion is unwelcome.
+ */
+export function useTransitionedValue(target, delay = 90) {
+  const [value, setValue] = useState(() => (motionWelcome() ? 0 : target));
+  useEffect(() => {
+    if (!motionWelcome()) { setValue(target); return undefined; }
+    const timer = setTimeout(() => setValue(target), delay);
+    const failsafe = setTimeout(() => setValue(target), 2500);
+    return () => { clearTimeout(timer); clearTimeout(failsafe); };
+  }, [target, delay]);
+  return value;
 }
 
 /**

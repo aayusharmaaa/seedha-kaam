@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from './api.js';
-import { Notice, SiteFooter, SiteNav, SpeakButton, Spinner, useLang } from './ui.jsx';
+import { Counter, Notice, Reveal, SiteFooter, SiteNav, SpeakButton, Spinner, useLang } from './ui.jsx';
 
 /* ================================================================== *
  * /mocks — the register
@@ -117,7 +117,7 @@ export function RulebookPage() {
             <div className="ledger-stats">
               <div><strong>{data.stats.codes}</strong><span>defect codes</span></div>
               <div><strong>{data.stats.languages}</strong><span>languages</span></div>
-              <div><strong>{data.stats.totalExplanations}</strong><span>explanations that exist in total, for everybody, forever</span></div>
+              <div><strong><Counter to={data.stats.totalExplanations} /></strong><span>explanations that exist in total, for everybody, forever</span></div>
               <div><strong>{data.stats.bySeverity.blocks}</strong><span>of them stop you at the counter</span></div>
             </div>
 
@@ -220,8 +220,12 @@ export function FrictionIndexPage() {
             </Notice>
 
             <div className="index-table">
-              {data.index.map((row) => (
-                <div className={`index-row ${row.slaMetRate < 0.5 ? 'poor' : row.slaMetRate < 0.8 ? 'mid' : 'good'}`} key={`${row.office}-${row.service}`}>
+              {data.index.map((row, i) => (
+                <Reveal
+                  className={`index-row ${row.slaMetRate < 0.5 ? 'poor' : row.slaMetRate < 0.8 ? 'mid' : 'good'}`}
+                  key={`${row.office}-${row.service}`}
+                  delay={Math.min(i, 6) * 70}
+                >
                   <div className="ir-office">
                     <strong>{row.office}</strong>
                     <span>{row.corporation} · {row.cases} {row.cases === 1 ? 'case' : 'cases'}{row.liveCases ? ` · ${row.liveCases} from this deployment` : ''}</span>
@@ -232,7 +236,7 @@ export function FrictionIndexPage() {
                   </div>
                   <div className="ir-num"><strong>{row.medianDays}</strong><span>median days</span></div>
                   <div className="ir-sla"><strong>{Math.round(row.slaMetRate * 100)}%</strong><span>met the period</span></div>
-                </div>
+                </Reveal>
               ))}
             </div>
             <p className="index-legend"><span className="legend-marker" aria-hidden="true" /> the 30-day statutory period</p>

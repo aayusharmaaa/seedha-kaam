@@ -1194,3 +1194,114 @@ button:disabled { cursor: not-allowed; opacity: .5; }
   .cut-side.was s { font-size: 1rem; }
   .cut-side.now b { font-size: 1.6rem; }
 }
+
+/* ==================================================================
+   MOTION LAYER
+
+   One rule governs everything below: the DEFAULT state of every element is
+   its finished state. Entrance animations, which need to start from a hidden
+   state, are gated behind [data-stage] or [data-reveal] and only ever applied
+   after JS has confirmed motion is welcome. Everything else here is a CHANGE
+   animation with no fill-mode, so if the timeline never runs the element is
+   already correct.
+   ================================================================== */
+
+/* Registering --pct makes it a real animatable number rather than an opaque
+   token, which is what lets the progress rings sweep instead of snap.
+   Browsers without @property simply jump to the final value. */
+@property --pct {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
+}
+
+.verdict-ring, .clock-ring {
+  transition: --pct 1s cubic-bezier(.25, .85, .35, 1);
+}
+
+/* ---- Change animations (safe without any guard) ------------------ */
+
+/* Switching a mechanics tab cross-fades. `from` only, no fill-mode: the
+   resting state is the final state, so a dead timeline shows the panel. */
+.mechanics-panel { animation: panel-in .4s cubic-bezier(.2, .8, .3, 1); }
+@keyframes panel-in {
+  from { opacity: 0; transform: translateY(8px); }
+}
+
+.mechanics-tabs button { transition: border-color .18s ease, background .18s ease, transform .18s ease; }
+.mechanics-tabs button:hover:not(.on) { transform: translateX(3px); border-color: var(--line-2); }
+
+/* The evidence expander opens rather than appearing. */
+.why-body { animation: why-open .3s cubic-bezier(.2, .8, .3, 1); }
+@keyframes why-open {
+  from { opacity: 0; transform: translateY(-6px); }
+}
+.why-toggle { transition: color .16s ease; }
+.why-toggle:hover { color: var(--deep); }
+.why-icon { transition: background .16s ease, transform .2s ease; }
+.why.open .why-icon { background: var(--deep); color: var(--lime); transform: rotate(180deg); }
+
+/* Findings and office cards lift slightly under the cursor, which makes a long
+   list feel like a set of objects rather than a wall of text. */
+.finding { transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease; }
+.finding:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
+
+.office-card { transition: border-color .2s ease, transform .2s ease; }
+.lookup-result .office-card:hover, .resolution .office-card:hover { transform: translateX(3px); }
+
+/* ---- Interaction polish ----------------------------------------- */
+
+/* The arrow leans forward on hover. Scoped to the decorative span so it never
+   touches an icon that carries meaning. */
+.btn span[aria-hidden="true"] { transition: transform .2s cubic-bezier(.2, .9, .3, 1); }
+.btn:hover span[aria-hidden="true"] { transform: translateX(3px); }
+
+.persona-card { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+.persona-avatar { transition: transform .25s cubic-bezier(.3, 1.3, .5, 1); }
+.persona-card:hover .persona-avatar { transform: rotate(-7deg) scale(1.07); }
+.persona-go { transition: transform .2s ease; }
+.persona-card:hover .persona-go { transform: translateX(4px); }
+
+.lookup-chips button { transition: border-color .16s ease, color .16s ease, transform .16s ease; }
+.lookup-chips button:hover { transform: translateY(-1px); }
+
+.tax-list li { transition: background .2s ease; }
+.tax-list li:hover { background: var(--card); }
+
+.index-row { transition: transform .2s ease, box-shadow .2s ease; }
+.index-row:hover { transform: translateX(3px); box-shadow: var(--shadow); }
+.ir-fill { transition: width .8s cubic-bezier(.25, .85, .35, 1); }
+
+.ledger-entry summary { transition: background .16s ease; }
+.ledger-entry summary:hover { background: var(--paper); }
+
+.mock-entry, .how-step { transition: border-color .2s ease, transform .2s ease; }
+.mock-entry:hover, .how-step:hover { border-color: var(--line-2); transform: translateY(-2px); }
+
+.doc-head { transition: background .16s ease; }
+.doc-head:hover { background: var(--paper-2); }
+
+.lang-choice, .variant { transition: border-color .18s ease, background .18s ease, transform .18s ease; }
+.lang-choice:hover:not(.on), .variant:hover:not(.on) { transform: translateY(-2px); border-color: var(--ink-2); }
+
+.tt-buttons button { transition: border-color .16s ease, transform .16s ease, background .16s ease; }
+.tt-buttons button:hover { transform: translateY(-1px); background: var(--card); }
+
+.esc { transition: transform .2s ease, box-shadow .2s ease; }
+.esc:not(.locked):hover { transform: translateX(3px); box-shadow: var(--shadow); }
+
+/* The rail fill already animates its width; give the current dot a pulse so the
+   step you are on is findable at a glance. */
+.rail-steps li.now .rail-dot { animation: step-pulse 2.4s ease-in-out infinite; }
+@keyframes step-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(201, 231, 85, .35); }
+  50%      { box-shadow: 0 0 0 7px rgba(201, 231, 85, .12); }
+}
+
+/* Numbers that count should not reflow the line as digits are added. */
+.stat-num, .honesty-facts strong, .ledger-stats strong { font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mechanics-panel, .why-body, .rail-steps li.now .rail-dot { animation: none; }
+  .verdict-ring, .clock-ring, .ir-fill { transition: none; }
+}

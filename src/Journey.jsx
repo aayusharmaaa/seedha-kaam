@@ -4,7 +4,7 @@ import { LANGS } from './i18n.js';
 import { createRecognizer, recognitionSupported, stopSpeaking } from './speech.js';
 import {
   Brand, Button, LanguageSwitch, Notice, SeverityBadge, SpeakButton, Spinner, WhyThisAnswer,
-  useLang, rupees
+  useLang, useTransitionedValue, rupees
 } from './ui.jsx';
 
 const STEPS = ['language', 'intake', 'office', 'documents', 'check', 'packet', 'clock', 'done'];
@@ -572,6 +572,11 @@ function CheckStep({ caseData, setCaseData, evaluation, setEvaluation, meta, onN
   const { t } = useLang();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // MUST sit above the early returns below. Placing it after them changed the
+  // hook count between the "no evaluation yet" render and the "evaluation
+  // arrived" render, which is React error #310 and takes the whole app down to
+  // a blank screen — the check step is exactly where that is least survivable.
+  const ringPct = useTransitionedValue(evaluation?.score ?? 0);
 
   const run = async () => {
     setBusy(true); setError('');
@@ -608,7 +613,7 @@ function CheckStep({ caseData, setCaseData, evaluation, setEvaluation, meta, onN
   return (
     <article className="card wide">
       <div className={`verdict ${evaluation.verdict}`}>
-        <div className="verdict-ring" style={{ '--pct': evaluation.score }}>
+        <div className="verdict-ring" style={{ '--pct': ringPct }}>
           <div className="verdict-inner">
             <strong>{blocking.length}</strong>
             <span>blocking</span>
@@ -784,6 +789,7 @@ function ClockStep({ caseData, setCaseData, onNext, onBack }) {
   };
 
   const days = status ? (status.breached ? status.daysOverdue : Math.max(0, status.remainingDays)) : null;
+  const clockPct = useTransitionedValue(Math.round((status?.progress ?? 0) * 100));
 
   const fmt = (iso) => new Date(iso).toLocaleDateString(language === 'kn' ? 'kn-IN' : language === 'hi' ? 'hi-IN' : 'en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -812,7 +818,7 @@ function ClockStep({ caseData, setCaseData, onNext, onBack }) {
       <h1>{t('clock.title')}</h1>
 
       <div className={`clock-face ${status?.state || 'running'}`}>
-        <div className="clock-ring" style={{ '--pct': Math.round((status?.progress ?? 0) * 100) }}>
+        <div className="clock-ring" style={{ '--pct': clockPct }}>
           <div className="clock-inner">
             <strong>{days === null ? '—' : days}</strong>
             {/* "1 DAYS OVERDUE" is the first thing a close-up of this ring shows. */}
