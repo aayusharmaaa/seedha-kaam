@@ -371,15 +371,15 @@ function MechanicsVisual({ id }) {
   }
   return (
     <div className="mech-viz clock-viz" aria-hidden="true">
-      <svg viewBox="0 0 100 48" className="mech-svg">
-        <circle className="mv-clock-ring" cx="24" cy="24" r="18" />
-        <circle className="mv-clock-fill" cx="24" cy="24" r="18" />
-        <text className="mv-clock-num" x="24" y="26">31</text>
-        <text className="mv-clock-sub" x="24" y="32">days</text>
-        <path className="mv-arrow-out" d="M46 24h4" />
-        <path className="mv-doc-out" d="M52 14h18v26H52z" />
-        <path className="mv-doc-fold" d="M52 14l7-6h11v6" />
-        <text className="mv-appeal" x="61" y="30">Appeal</text>
+      <svg viewBox="0 0 132 64" className="mech-svg">
+        <circle className="mv-clock-ring" cx="32" cy="32" r="26" />
+        <circle className="mv-clock-fill" cx="32" cy="32" r="26" />
+        <text className="mv-clock-num" x="32" y="35">31</text>
+        <text className="mv-clock-sub" x="32" y="43">days</text>
+        <path className="mv-arrow-out" d="M62 32h5" />
+        <path className="mv-doc-out" d="M70 20h24v36H70z" />
+        <path className="mv-doc-fold" d="M70 20l9-7h15v7" />
+        <text className="mv-appeal" x="82" y="41">Appeal</text>
       </svg>
     </div>
   );
