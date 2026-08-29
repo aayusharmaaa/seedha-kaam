@@ -14,7 +14,7 @@
  * would be worse than failing now.
  */
 
-const VERSION = 'seedha-v4';
+const VERSION = 'seedha-v5';
 const SHELL = `${VERSION}-shell`;
 const DATA = `${VERSION}-data`;
 

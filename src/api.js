@@ -10,22 +10,54 @@
 
 const TIMEOUT_MS = 30_000;
 const CASE_KEY = 'seedha:caseId';
+const CASE_BLOB_KEY = 'seedha:case';
 
 export const getStoredCaseId = () => {
   try { return sessionStorage.getItem(CASE_KEY); } catch { return null; }
 };
 export const setStoredCaseId = (id) => {
-  try { id ? sessionStorage.setItem(CASE_KEY, id) : sessionStorage.removeItem(CASE_KEY); } catch { /* private mode */ }
+  try {
+    if (id) sessionStorage.setItem(CASE_KEY, id);
+    else {
+      sessionStorage.removeItem(CASE_KEY);
+      sessionStorage.removeItem(CASE_BLOB_KEY);
+    }
+  } catch { /* private mode */ }
 };
+
+/** Full case mirror — survives Vercel serverless cold starts between API calls. */
+export const getStoredCase = () => {
+  try {
+    const raw = sessionStorage.getItem(CASE_BLOB_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+};
+export const setStoredCase = (caseData) => {
+  try {
+    if (caseData) sessionStorage.setItem(CASE_BLOB_KEY, JSON.stringify(caseData));
+    else sessionStorage.removeItem(CASE_BLOB_KEY);
+  } catch { /* private mode */ }
+};
+
+function withSnapshot(body = {}) {
+  const snapshot = getStoredCase();
+  return snapshot ? { ...body, caseSnapshot: snapshot } : body;
+}
+
+function syncCase(payload) {
+  if (payload?.case) setStoredCase(payload.case);
+  return payload;
+}
 
 async function request(path, { method = 'GET', body, timeout = TIMEOUT_MS } = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
+  const payload = method === 'GET' ? body : withSnapshot(body);
   try {
     const response = await fetch(`/api${path}`, {
       method,
-      headers: body ? { 'Content-Type': 'application/json' } : undefined,
-      body: body ? JSON.stringify(body) : undefined,
+      headers: payload ? { 'Content-Type': 'application/json' } : undefined,
+      body: payload ? JSON.stringify(payload) : undefined,
       signal: controller.signal
     });
     const payload = await response.json().catch(() => ({}));
@@ -59,25 +91,25 @@ export const api = {
 
   publicLookup: (address) => request('/jurisdiction/lookup', { method: 'POST', body: { address } }),
 
-  createCase: (body) => request('/cases', { method: 'POST', body }),
-  getCase: (id) => request(`/cases/${id}`),
-  deleteCase: (id) => request(`/cases/${id}`, { method: 'DELETE' }),
-  setLanguage: (id, language) => request(`/cases/${id}/language`, { method: 'POST', body: { language } }),
-  setApplicant: (id, body) => request(`/cases/${id}/applicant`, { method: 'POST', body }),
+  createCase: (body) => request('/cases', { method: 'POST', body }).then(syncCase),
+  getCase: (id) => request(`/cases/${id}`).then(syncCase),
+  deleteCase: (id) => request(`/cases/${id}`, { method: 'DELETE' }).then((r) => { setStoredCase(null); return r; }),
+  setLanguage: (id, language) => request(`/cases/${id}/language`, { method: 'POST', body: { language } }).then(syncCase),
+  setApplicant: (id, body) => request(`/cases/${id}/applicant`, { method: 'POST', body }).then(syncCase),
 
-  intake: (id, utterance) => request(`/cases/${id}/intake`, { method: 'POST', body: { utterance }, timeout: 20_000 }),
-  jurisdiction: (id, body) => request(`/cases/${id}/jurisdiction`, { method: 'POST', body }),
+  intake: (id, utterance) => request(`/cases/${id}/intake`, { method: 'POST', body: { utterance }, timeout: 20_000 }).then(syncCase),
+  jurisdiction: (id, body) => request(`/cases/${id}/jurisdiction`, { method: 'POST', body }).then(syncCase),
 
-  loadFixtures: (id, body) => request(`/cases/${id}/documents/fixtures`, { method: 'POST', body }),
-  addDocument: (id, body) => request(`/cases/${id}/documents`, { method: 'POST', body, timeout: 60_000 }),
-  updateDocument: (id, docId, body) => request(`/cases/${id}/documents/${docId}`, { method: 'PUT', body }),
-  removeDocument: (id, docId) => request(`/cases/${id}/documents/${docId}`, { method: 'DELETE' }),
+  loadFixtures: (id, body) => request(`/cases/${id}/documents/fixtures`, { method: 'POST', body }).then(syncCase),
+  addDocument: (id, body) => request(`/cases/${id}/documents`, { method: 'POST', body, timeout: 60_000 }).then(syncCase),
+  updateDocument: (id, docId, body) => request(`/cases/${id}/documents/${docId}`, { method: 'PUT', body }).then(syncCase),
+  removeDocument: (id, docId) => request(`/cases/${id}/documents/${docId}`, { method: 'DELETE' }).then(syncCase),
 
-  check: (id) => request(`/cases/${id}/check`, { method: 'POST' }),
-  submit: (id, acknowledgementNumber) => request(`/cases/${id}/submit`, { method: 'POST', body: { acknowledgementNumber } }),
-  clock: (id) => request(`/cases/${id}/clock`),
-  demoNow: (id, now) => request(`/cases/${id}/demo-now`, { method: 'POST', body: { now } }),
-  complete: (id) => request(`/cases/${id}/complete`, { method: 'POST' }),
+  check: (id) => request(`/cases/${id}/check`, { method: 'POST', body: {} }).then(syncCase),
+  submit: (id, acknowledgementNumber) => request(`/cases/${id}/submit`, { method: 'POST', body: { acknowledgementNumber } }).then(syncCase),
+  clock: (id) => request(`/cases/${id}/clock`).then(syncCase),
+  demoNow: (id, now) => request(`/cases/${id}/demo-now`, { method: 'POST', body: { now } }).then(syncCase),
+  complete: (id) => request(`/cases/${id}/complete`, { method: 'POST', body: {} }).then(syncCase),
 
   packetUrl: (id) => `/api/cases/${id}/packet.pdf`,
   reportUrl: (id) => `/api/cases/${id}/report.pdf`,

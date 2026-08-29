@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { api, downscaleImage } from './api.js';
+import { api, downscaleImage, setStoredCase } from './api.js';
+import { parseIntakeDeterministic } from '../server/intake.js';
 import { LANGS } from './i18n.js';
 import { createRecognizer, recognitionSupported, stopSpeaking } from './speech.js';
 import {
@@ -110,12 +111,37 @@ function IntakeStep({ caseData, setCaseData, onNext, onBack }) {
   const send = async () => {
     if (!text.trim()) return;
     setBusy(true);
+    setMicError('');
     try {
       const result = await api.intake(caseData.id, text.trim());
       setIntake(result.intake);
       setCaseData(result.case);
-    } catch (e) { setMicError(e.message); }
-    finally { setBusy(false); }
+    } catch (e) {
+      const parsed = parseIntakeDeterministic(text.trim());
+      const intake = {
+        ...parsed,
+        utterance: text.trim(),
+        at: new Date().toISOString()
+      };
+      const nextCase = {
+        ...caseData,
+        intake,
+        ...(parsed.variant ? { variant: parsed.variant } : {}),
+        ...(parsed.locality && !caseData.address ? { address: parsed.locality } : {})
+      };
+      setIntake(intake);
+      setCaseData(nextCase);
+      setStoredCase(nextCase);
+      try {
+        const synced = await api.intake(caseData.id, text.trim());
+        setIntake(synced.intake);
+        setCaseData(synced.case);
+      } catch {
+        /* Parsed locally; server sync can retry on the next step. */
+      }
+    } finally {
+      setBusy(false);
+    }
   };
 
   const chooseVariant = async (variant) => {

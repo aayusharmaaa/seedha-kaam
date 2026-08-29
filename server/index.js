@@ -42,8 +42,16 @@ const bad = (res, message, status = 400) => res.status(status).json({ error: mes
  * Case lookup middleware
  * ------------------------------------------------------------------ */
 
+function restoreCaseFromBody(req) {
+  const snapshot = req.body?.caseSnapshot;
+  if (!snapshot || snapshot.id !== req.params.caseId) return null;
+  putCase(req.params.caseId, snapshot);
+  return getCase(req.params.caseId);
+}
+
 function withCase(req, res, next) {
-  const caseData = getCase(req.params.caseId);
+  let caseData = getCase(req.params.caseId);
+  if (!caseData) caseData = restoreCaseFromBody(req);
   if (!caseData) {
     return res.status(404).json({
       error: 'This session has expired or was never started.',

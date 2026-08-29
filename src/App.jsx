@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api, getStoredCaseId, setStoredCaseId } from './api.js';
+import { api, getStoredCaseId, setStoredCase, setStoredCaseId } from './api.js';
 import { warmVoices } from './speech.js';
 import Landing from './Landing.jsx';
 import Journey from './Journey.jsx';
@@ -38,7 +38,7 @@ function Shell() {
     const stored = getStoredCaseId();
     if (!stored) return;
     api.getCase(stored)
-      .then((r) => setCaseData(r.case))
+      .then((r) => { setCaseData(r.case); setStoredCase(r.case); })
       .catch(() => setStoredCaseId(null));
   }, []);
 
@@ -48,6 +48,7 @@ function Shell() {
     try {
       const result = await api.createCase({ personaId, language });
       setStoredCaseId(result.caseId);
+      setStoredCase(result.case);
       setCaseData(result.case);
       navigate('/case');
     } catch (e) { setError(e.message); }
@@ -59,6 +60,7 @@ function Shell() {
   const restart = async () => {
     if (caseData?.id) await api.deleteCase(caseData.id).catch(() => {});
     setStoredCaseId(null);
+    setStoredCase(null);
     setCaseData(null);
     navigate('/');
   };
