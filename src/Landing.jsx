@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { api } from './api.js';
 import { FALLBACK_META } from './demo-meta.js';
-import { Brand, Button, Counter, FlowArrow, LanguageSwitch, Reveal, RingStat, SiteFooter, SiteNav, SpeakButton, useLang, useStagedEntrance, rupees } from './ui.jsx';
+import { Brand, Button, Counter, FlowArrow, LanguageSwitch, Reveal, RingStat, scrollToSection, SiteFooter, SiteNav, SpeakButton, useLang, useStagedEntrance, rupees } from './ui.jsx';
 
 function officeMapsHref(candidate) {
   return candidate.mapsUrl
@@ -242,7 +242,7 @@ function PriceContrast() {
         </p>
         <span className="price-note">
           Payments are not implemented in this prototype — there is no payment screen at all.
-          See <a href="#/mocks">/mocks</a>.
+          See <a href="#/mocks">what is mocked</a>.
         </span>
       </div>
     </section>
@@ -590,11 +590,19 @@ export function PersonaPicker({ meta, onStart, starting }) {
  * Page
  * ------------------------------------------------------------------ */
 
-export default function Landing({ meta, onStart, starting }) {
+export default function Landing({ meta, onStart, starting, focusSection }) {
   const { t } = useLang();
   // Opts the hero into its entrance animation after mount, and back out once
   // the sequence has played. See useStagedEntrance.
   const heroRef = useStagedEntrance(3600);
+
+  useEffect(() => {
+    if (!focusSection) return;
+    const scroll = () => scrollToSection(focusSection);
+    scroll();
+    const retry = window.setTimeout(scroll, 400);
+    return () => window.clearTimeout(retry);
+  }, [focusSection]);
 
   return (
     <>

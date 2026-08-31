@@ -115,10 +115,10 @@ export function SiteNav() {
         <span className="sr-only">Menu</span>
       </button>
       <nav className={open ? 'open' : ''} onClick={() => setOpen(false)}>
-        <a href="#/how">{t('nav.how')}</a>
-        <a href="#/mocks">{t('nav.mocks')}</a>
-        <a href="#/rulebook">{t('nav.ledger')}</a>
-        <a href="#/index">{t('nav.index')}</a>
+        <NavSectionLink route="/how">{t('nav.how')}</NavSectionLink>
+        <NavSectionLink route="/mocks">{t('nav.mocks')}</NavSectionLink>
+        <NavSectionLink route="/rulebook">{t('nav.ledger')}</NavSectionLink>
+        <NavSectionLink route="/index">{t('nav.index')}</NavSectionLink>
         <LanguageSwitch compact />
         <a className="nav-cta" href="#/start">{t('nav.start')}</a>
       </nav>
@@ -134,10 +134,10 @@ export function SiteFooter() {
         <p>An independent prototype for a public-service problem. Not affiliated with, endorsed by, or connected to any government body. No government logo is used anywhere in this product, and no government system is accessed by it.</p>
       </div>
       <div className="footer-links">
-        <a href="#/mocks">Everything that is mocked</a>
-        <a href="#/rulebook">The rulebook</a>
-        <a href="#/index">Friction index</a>
-        <a href="#/how">How it works</a>
+        <NavSectionLink route="/mocks">Everything that is mocked</NavSectionLink>
+        <NavSectionLink route="/rulebook">The rulebook</NavSectionLink>
+        <NavSectionLink route="/index">Friction index</NavSectionLink>
+        <NavSectionLink route="/how">How it works</NavSectionLink>
       </div>
     </footer>
   );
@@ -282,9 +282,45 @@ export function useHashRoute() {
   return [route, (next) => { window.location.hash = next; }];
 }
 
+/** Nav routes that open the landing page at a specific infographic section. */
+export const LANDING_SECTION_ROUTES = {
+  '/how': 'how',
+  '/mocks': 'honesty',
+  '/rulebook': 'architecture',
+  '/index': 'why'
+};
+
+export function landingSectionForRoute(route = '') {
+  const normalized = route.startsWith('/') ? route : `/${route}`;
+  for (const [path, section] of Object.entries(LANDING_SECTION_ROUTES)) {
+    if (normalized === path || normalized.startsWith(`${path}/`)) return section;
+  }
+  return null;
+}
+
+export function scrollToSection(id) {
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 /** Scroll to the three demo persona cards on the landing page. */
 export function scrollToPersonas() {
-  document.getElementById('personas')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  scrollToSection('personas');
+}
+
+export function NavSectionLink({ route, className = '', children }) {
+  const href = `#${route}`;
+  const section = LANDING_SECTION_ROUTES[route];
+  return (
+    <a
+      href={href}
+      className={className}
+      onClick={() => {
+        if (window.location.hash === href) scrollToSection(section);
+      }}
+    >
+      {children}
+    </a>
+  );
 }
 
 /**

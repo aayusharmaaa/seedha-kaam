@@ -4,8 +4,7 @@ import { FALLBACK_META } from './demo-meta.js';
 import { warmVoices } from './speech.js';
 import Landing, { PersonaPicker } from './Landing.jsx';
 import Journey from './Journey.jsx';
-import { FrictionIndexPage, HowPage, MocksPage, RulebookPage } from './Pages.jsx';
-import { LanguageProvider, MockBanner, Notice, OfflineBar, useHashRoute, useLang } from './ui.jsx';
+import { LanguageProvider, MockBanner, Notice, OfflineBar, landingSectionForRoute, useHashRoute, useLang } from './ui.jsx';
 
 function CaseGate() {
   useEffect(() => {
@@ -78,10 +77,7 @@ function Shell() {
     navigate('/');
   };
 
-  if (route.startsWith('/mocks')) return <MocksPage />;
-  if (route.startsWith('/rulebook')) return <RulebookPage />;
-  if (route.startsWith('/index')) return <FrictionIndexPage />;
-  if (route.startsWith('/how')) return <HowPage />;
+  const landingSection = landingSectionForRoute(route);
 
   if (route.startsWith('/start') || route.startsWith('/personas')) {
     return (
@@ -102,7 +98,7 @@ function Shell() {
   return (
     <>
       {error && <div className="page"><Notice tone="error">{error}</Notice></div>}
-      <Landing meta={meta} onStart={start} starting={starting} />
+      <Landing meta={meta} onStart={start} starting={starting} focusSection={landingSection || undefined} />
     </>
   );
 }
