@@ -407,10 +407,11 @@ export function useTransitionedValue(target, delay = 90) {
  * This matters more here than on a normal marketing page: the thing being
  * revealed is somebody's explanation of why their property transfer is stuck.
  */
-export function Reveal({ as: Tag = 'div', delay = 0, className = '', children, ...props }) {
+export function Reveal({ as: Tag = 'div', delay = 0, className = '', children, revealDisabled = false, ...props }) {
   const ref = useRef(null);
 
   useEffect(() => {
+    if (revealDisabled) return undefined;
     const node = ref.current;
     if (!node) return undefined;
     if (typeof IntersectionObserver === 'undefined') return undefined;
@@ -429,7 +430,12 @@ export function Reveal({ as: Tag = 'div', delay = 0, className = '', children, .
   }, []);
 
   return (
-    <Tag ref={ref} className={className} style={{ transitionDelay: `${delay}ms` }} {...props}>
+    <Tag
+      ref={ref}
+      className={className}
+      style={revealDisabled ? undefined : { transitionDelay: `${delay}ms` }}
+      {...props}
+    >
       {children}
     </Tag>
   );

@@ -497,6 +497,7 @@ function Personas({ personas, onStart, starting, standalone = false }) {
             as="button"
             key={persona.id}
             delay={index * 110}
+            revealDisabled={standalone}
             className={`persona-card ${persona.resolvableByPaperwork ? '' : 'hard'}`}
             onClick={() => onStart(persona.id)}
             disabled={Boolean(starting)}
