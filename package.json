@@ -1,8 +1,8 @@
 {
   "name": "seedha-kaam",
   "version": "2.0.0",
-  "private": true,
-  "description": "Khata transfer without a middleman. A deterministic document pre-flight, jurisdiction resolver and statutory clock for Bengaluru property mutation. Independent prototype, synthetic data only.",
+  "private": false,
+  "description": "Showcase repo for Build What Moves India — Bengaluru khata transfer pre-flight prototype. No API keys on deploy. Synthetic data only.",
   "type": "module",
   "scripts": {
     "dev": "concurrently -n web,api -c cyan,green \"vite --host 0.0.0.0\" \"node --watch server/index.js\"",

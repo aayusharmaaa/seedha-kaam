@@ -1,5 +1,18 @@
 # Seedha काम
 
+> **Showcase repository — [Build What Moves India](https://buildwhatmovesindia.com/)**
+>
+> Independent prototype for Bengaluru khata transfer pre-flight: jurisdiction
+> resolution, deterministic document checks, statutory clock, and appeal drafting.
+> **Synthetic data only. Not a government service.**
+
+| | |
+|---|---|
+| **Live demo** | [seedha-kaam.vercel.app](https://seedha-kaam.vercel.app) |
+| **Repository** | [github.com/aayusharmaaa/seedha-kaam](https://github.com/aayusharmaaa/seedha-kaam) |
+| **API keys on deploy** | **None configured** — vision extraction and model-assisted intake are off; the full journey runs on the manual/offline path |
+| **Submission pack** | [`SUBMISSION.md`](SUBMISSION.md) — summary, demo script, reviewer checklist |
+
 **Khata transfer without a middleman.** *Sarkari kaam, seedha.*
 
 > **We can't end bribery. So we made it cheaper.**
@@ -129,10 +142,26 @@ npm run build && npm start        # serves dist + API on PORT (default 3001)
 docker build -t seedha-kaam . && docker run -p 3001:3001 seedha-kaam
 ```
 
-`render.yaml` is included for a one-click Render deploy. The live link opens with
-no sign-in and no credentials — there is nothing to log into.
+`render.yaml` is included for a one-click Render deploy. The live Vercel deployment
+at [seedha-kaam.vercel.app](https://seedha-kaam.vercel.app) opens with no sign-in
+and no credentials — there is nothing to log into.
 
-### Optional: vision extraction
+### API keys on this deployment
+
+**No API keys are set** on the public showcase deployment or in this repository.
+That is intentional for reviewers and judges:
+
+| Variable | Status | What still works without it |
+|---|---|---|
+| `OPENAI_API_KEY` | **Not set** | Document upload via manual field confirmation; file-name classification; identical compliance engine |
+| `OPENAI_MODEL` | **Not set** | Defaults to `gpt-4o-mini` only if a key is added locally |
+| Everything else | Defaults | Full demo journey: intake cues, jurisdiction, check, PDFs, clock, appeals |
+
+To enable vision extraction locally, copy `.env.example` to `.env` and set
+`OPENAI_API_KEY`. The UI always states which extraction path ran. The model never
+decides compliance — it only proposes field values for you to confirm.
+
+### Optional: vision extraction (local only)
 
 Set `OPENAI_API_KEY` and uploaded photographs are read into candidate field
 values by an OpenAI vision model. **With no key set the product works end to
@@ -178,6 +207,59 @@ claimed as a design property, not a demonstrated one.
 what the prototype does instead, what is genuinely real, and what would replace
 it in production. If you find something not on that list, that is a bug in the
 list.
+
+---
+
+## Future scope
+
+Everything below is **out of scope for this showcase** but already shaped in the
+architecture, the mock register (`#/register`), or the rule-pack design. The
+prototype is built so these are extensions, not rewrites.
+
+### Near term (production hardening)
+
+| Area | Today | Future |
+|---|---|---|
+| **Case persistence** | In-memory, 3-hour TTL; lost on serverless cold start unless browser snapshot is sent | Durable store with explicit consent, retention policy aligned to DPDP Act principles, and immediate delete |
+| **Vision extraction** | Manual confirm path (no `OPENAI_API_KEY` on deploy) | Optional OpenAI vision with on-device downscaling; pre-processing for face/signature regions |
+| **Corporation boundaries** | Hand-drawn approximate envelopes | Official machine-readable GBA/corporation boundary files — geometry code stays the same |
+| **Address geocoding** | Offline gazetteer of 61 localities | Consent-based geocoder with offline fallback for poor connectivity |
+| **Serverless deploy** | Vercel + browser case snapshot workaround | Shared session store (e.g. Vercel KV / Redis) for cross-instance case continuity and PDF generation |
+| **Service worker cache** | PWA shell + stale-while-revalidate for GET APIs | Versioned cache busting on every deploy; network-first for all mutating flows |
+
+### Product (citizen-facing)
+
+| Area | Today | Future |
+|---|---|---|
+| **Payments** | No payment screen | Payment gateway, receipt, refund path tied to the “refunded if work not done” guarantee |
+| **Submission** | Citizen files the packet themselves | Stays citizen-submitted; no portal credential storage or screen-scraping |
+| **Appeals & RTI** | Drafted and downloadable PDFs | Optional filing integration with official grievance channels, on explicit citizen instruction each time |
+| **Government data access** | Citizen uploads own documents | Consent-based civic data transport (account-aggregator model for property records, when it exists) |
+| **Aadhaar** | Format/checksum validation only | eKYC at the counter between citizen and office — we never store Aadhaar |
+| **Voice** | Browser Web Speech API | Pre-rendered audio per defect code × language (~135 clips), cached once for all users |
+| **Friction index** | 15 seeded rows + anonymous deployment rows | Published minimum-case threshold per office; open data feed; never by officer |
+
+### Scale (more services, more cities)
+
+| Area | Today | Future |
+|---|---|---|
+| **Services** | Khata transfer, Bengaluru, one rule pack (`khata-transfer@1.4.0`) | Additional rule packs: EPF claims, caste certificates, trade licences — same engine shape, new YAML/JS rule files |
+| **Cities** | Five Bengaluru corporations | Additional city boundary packs + gazetteers; same jurisdiction resolver |
+| **Document vault** | Per-case documents only | Confirm-once vault: Aadhaar, address proof, photo reused across later services |
+| **Statutory catalogue** | Encoded SLAs with verification dates | Maintained service catalogue with “cannot verify — see official source” fail-safe |
+| **Languages** | English, Kannada, Hindi (141 ledger explanations) | More languages by extending the ledger, not regenerating per citizen |
+| **Intake** | Deterministic cue matching + optional model gap-fill | Same cue-first design; model only fills blanks when key is present |
+
+### Explicit non-goals (by design)
+
+- Storing or using government portal passwords or OTPs
+- Submitting applications on a citizen’s behalf without their action
+- Screen-scraping government portals
+- Naming individual officers in the friction index
+- Claiming official government endorsement
+
+Full disclosure for all fourteen mocked areas: open **`#/register`** in the live
+app or `GET /api/mocks`.
 
 ---
 

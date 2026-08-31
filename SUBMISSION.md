@@ -1,4 +1,8 @@
-# Submission pack
+# Submission pack — Build What Moves India
+
+> **Showcase repo:** [github.com/aayusharmaaa/seedha-kaam](https://github.com/aayusharmaaa/seedha-kaam)  
+> **Live demo:** [seedha-kaam.vercel.app](https://seedha-kaam.vercel.app)  
+> **API keys on deploy:** none — full journey runs on manual/offline paths
 
 ## Project summary (242 words)
 
