@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { api } from './api.js';
-import { Brand, Button, Counter, FlowArrow, LanguageSwitch, Reveal, RingStat, scrollToPersonas, SiteFooter, SiteNav, SpeakButton, useLang, useStagedEntrance, rupees } from './ui.jsx';
+import { FALLBACK_META } from './demo-meta.js';
+import { Brand, Button, Counter, FlowArrow, LanguageSwitch, Reveal, RingStat, SiteFooter, SiteNav, SpeakButton, useLang, useStagedEntrance, rupees } from './ui.jsx';
 
 function officeMapsHref(candidate) {
   return candidate.mapsUrl
@@ -481,17 +482,17 @@ function Architecture() {
  * Personas
  * ------------------------------------------------------------------ */
 
-function Personas({ personas, onStart, starting }) {
-  if (!personas.length) return null;
+function Personas({ personas, onStart, starting, standalone = false }) {
+  const list = personas?.length ? personas : FALLBACK_META.personas;
   return (
-    <section className="personas" id="personas">
+    <section className={`personas ${standalone ? 'personas-standalone' : ''}`} id="personas">
       <div className="section-head">
         <span className="kicker">Two minutes, start to finish</span>
         <h2>Pick someone and walk their whole case.</h2>
         <p>Each one has a complete synthetic document set with real defects in it. The engine has not been told which is which.</p>
       </div>
       <div className="persona-grid">
-        {personas.map((persona, index) => (
+        {list.map((persona, index) => (
           <Reveal
             as="button"
             key={persona.id}
@@ -561,26 +562,39 @@ function Honesty({ meta }) {
 }
 
 /* ------------------------------------------------------------------ *
+ * Start — three demo cases, front and centre
+ * ------------------------------------------------------------------ */
+
+export function PersonaPicker({ meta, onStart, starting }) {
+  return (
+    <>
+      <SiteNav />
+      <main className="persona-picker">
+        <Personas
+          personas={meta?.personas}
+          onStart={onStart}
+          starting={starting}
+          standalone
+        />
+        <p className="persona-picker-back">
+          <a href="#/">← Back to home</a>
+        </p>
+      </main>
+      <SiteFooter />
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------ *
  * Page
  * ------------------------------------------------------------------ */
 
-export default function Landing({ meta, onStart, starting, focusPersonas }) {
+export default function Landing({ meta, onStart, starting }) {
   const { t } = useLang();
   // Opts the hero into its entrance animation after mount, and back out once
   // the sequence has played. See useStagedEntrance.
   const heroRef = useStagedEntrance(3600);
 
-  useEffect(() => {
-    if (!focusPersonas) return;
-    const scroll = () => scrollToPersonas();
-    scroll();
-    const retry = window.setTimeout(scroll, 400);
-    const tidy = window.setTimeout(() => { window.location.hash = '#/'; }, 600);
-    return () => {
-      window.clearTimeout(retry);
-      window.clearTimeout(tidy);
-    };
-  }, [focusPersonas]);
   return (
     <>
       <SiteNav />

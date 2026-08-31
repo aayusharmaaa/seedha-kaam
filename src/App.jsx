@@ -2,10 +2,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, getStoredCase, getStoredCaseId, setStoredCase, setStoredCaseId } from './api.js';
 import { FALLBACK_META } from './demo-meta.js';
 import { warmVoices } from './speech.js';
-import Landing from './Landing.jsx';
+import Landing, { PersonaPicker } from './Landing.jsx';
 import Journey from './Journey.jsx';
 import { FrictionIndexPage, HowPage, MocksPage, RulebookPage } from './Pages.jsx';
-import { LanguageProvider, MockBanner, Notice, OfflineBar, scrollToPersonas, useHashRoute, useLang } from './ui.jsx';
+import { LanguageProvider, MockBanner, Notice, OfflineBar, useHashRoute, useLang } from './ui.jsx';
 
 function CaseGate() {
   useEffect(() => {
@@ -87,7 +87,7 @@ function Shell() {
     return (
       <>
         {error && <div className="page"><Notice tone="error">{error}</Notice></div>}
-        <Landing meta={meta} onStart={start} starting={starting} focusPersonas />
+        <PersonaPicker meta={meta} onStart={start} starting={starting} />
       </>
     );
   }

@@ -586,6 +586,34 @@ button:disabled { cursor: not-allowed; opacity: .5; }
   scroll-margin-top: 1rem;
 }
 
+.persona-picker {
+  min-height: calc(100vh - 7rem);
+  padding: 1.5rem 0 3rem;
+  background: var(--paper);
+}
+
+.personas-standalone {
+  padding-top: 2.5rem;
+  border-bottom: none;
+}
+
+.persona-picker-back {
+  max-width: var(--wrap);
+  margin: 1.5rem auto 0;
+  padding: 0 1.15rem;
+  font-size: .92rem;
+}
+
+.persona-picker-back a {
+  color: var(--ink-2);
+  text-decoration: none;
+}
+
+.persona-picker-back a:hover {
+  color: var(--deep);
+  text-decoration: underline;
+}
+
 .arch {
   border-top: 3px solid var(--lime);
 }
