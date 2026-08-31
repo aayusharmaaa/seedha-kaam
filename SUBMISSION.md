@@ -4,6 +4,8 @@
 > **Live demo:** [seedha-kaam.vercel.app](https://seedha-kaam.vercel.app)  
 > **API keys on deploy:** none — full journey runs on manual/offline paths
 
+![Seedha Kaam showcase screenshot](docs/screenshot.png)
+
 ## Project summary (242 words)
 
 We can't end bribery. So we made it cheaper.

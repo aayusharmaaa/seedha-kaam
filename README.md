@@ -13,6 +13,8 @@
 | **API keys on deploy** | **None configured** — vision extraction and model-assisted intake are off; the full journey runs on the manual/offline path |
 | **Submission pack** | [`SUBMISSION.md`](SUBMISSION.md) — summary, demo script, reviewer checklist |
 
+![Seedha Kaam landing page — hero, free office lookup, and demo entry point](docs/screenshot.png)
+
 **Khata transfer without a middleman.** *Sarkari kaam, seedha.*
 
 > **We can't end bribery. So we made it cheaper.**
