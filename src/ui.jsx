@@ -36,7 +36,7 @@ export function MockBanner() {
     <div className="mock-banner" role="note">
       <span className="mock-dot" aria-hidden="true" />
       <span>{t('banner.text')}</span>
-      <a href="#/mocks">{t('banner.link')} →</a>
+      <a href="#/register">{t('banner.link')} →</a>
     </div>
   );
 }

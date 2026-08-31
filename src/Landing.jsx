@@ -110,7 +110,7 @@ function OfficeLookup() {
           )}
 
           <p className="lookup-caveat">
-            Boundary geometry here is approximate — we say so on <a href="#/mocks">the mocks page</a> rather than in a footnote nobody reads. When a property sits within 1.5 km of a divide we name both offices instead of guessing.
+            Boundary geometry here is approximate — we say so on <a href="#/register">the mock register</a> rather than in a footnote nobody reads. When a property sits within 1.5 km of a divide we name both offices instead of guessing.
           </p>
         </div>
       )}
@@ -472,7 +472,7 @@ function Architecture() {
         That last line is also the scale answer. Because explanations are cached per defect code and not
         per citizen, serving one crore people costs the same model spend as serving ten thousand.
         Adding a second service means authoring another rule file — not writing another scraper.
-        <a href="#/rulebook">See all 47 codes →</a>
+        <a href="#/ledger">See all 47 codes →</a>
       </p>
     </section>
   );
@@ -537,7 +537,7 @@ function Honesty({ meta }) {
             The full register lists fourteen of these, each with what we do instead and what would replace it.
             If you find something on it we have not listed, that is a bug in the page.
           </p>
-          <a className="btn ghost" href="#/mocks">Read the mock register →</a>
+          <a className="btn ghost" href="#/register">Read the mock register →</a>
         </div>
         <ul className="honesty-facts">
           <li>

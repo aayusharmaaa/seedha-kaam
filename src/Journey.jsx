@@ -954,7 +954,7 @@ function DoneStep({ caseData, evaluation, onRestart }) {
 
       <div className="card-actions">
         <Button kind="ghost" onClick={onRestart}>{t('done.restart')}</Button>
-        <a className="btn secondary" href="#/mocks">{t('nav.mocks')} →</a>
+        <a className="btn secondary" href="#/register">{t('nav.mocks')} →</a>
       </div>
     </article>
   );

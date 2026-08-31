@@ -4,6 +4,7 @@ import { FALLBACK_META } from './demo-meta.js';
 import { warmVoices } from './speech.js';
 import Landing, { PersonaPicker } from './Landing.jsx';
 import Journey from './Journey.jsx';
+import { MocksPage, RulebookPage } from './Pages.jsx';
 import { LanguageProvider, MockBanner, Notice, OfflineBar, landingSectionForRoute, useHashRoute, useLang } from './ui.jsx';
 
 function CaseGate() {
@@ -78,6 +79,9 @@ function Shell() {
   };
 
   const landingSection = landingSectionForRoute(route);
+
+  if (route.startsWith('/register')) return <MocksPage />;
+  if (route.startsWith('/ledger')) return <RulebookPage />;
 
   if (route.startsWith('/start') || route.startsWith('/personas')) {
     return (
