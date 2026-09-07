@@ -25,8 +25,9 @@ import { motionWelcome, useLang } from './ui.jsx';
  * is the same argument this product makes everywhere else: generate once per
  * (phrase x language), serve it flat, and the cost stops scaling with users.
  * `npm run voice` renders it from ElevenLabs. Without that file we fall back to
- * the browser's own Kannada synthesis, and failing that, to captions alone.
- * Nothing here ever autoplays with sound; browsers forbid it and it is rude.
+ * the browser's own Kannada synthesis (on a click), and failing that, to captions.
+ * Scrolling into the section tries to start the pre-rendered clip; if the browser
+ * blocks autoplay with sound, the visuals still run and the play button remains.
  * When voice plays, the speak scene holds until the clip ends, then intake →
  * documents → verdict advance in sequence.
  * ================================================================== */
@@ -199,12 +200,17 @@ export default function Showcase({ meta }) {
   const [storyboard, setStoryboard] = useState(false);
   const [ringPct, setRingPct] = useState(0);
   const [hasClip, setHasClip] = useState(false);
+  const [clipProbed, setClipProbed] = useState(false);
 
   const stageRef = useRef(null);
   const audioRef = useRef(null);
   const timers = useRef([]);
   const runId = useRef(0);
   const afterVoiceStarted = useRef(false);
+  const autoStarted = useRef(false);
+  const gestureReady = useRef(false);
+  const voiceRef = useRef(voice);
+  voiceRef.current = voice;
 
   const clearTimers = () => { timers.current.forEach(clearTimeout); timers.current = []; };
 
@@ -249,7 +255,7 @@ export default function Showcase({ meta }) {
     }, AFTER_VOICE.done));
   };
 
-  const startVoice = async (token) => {
+  const startVoice = async (token, { allowBrowserFallback = true } = {}) => {
     const el = audioRef.current;
     // Only reach for the file if we know it is there. HTMLMediaElement.play()
     // does NOT reliably reject for a missing source — it can resolve and then
@@ -275,9 +281,12 @@ export default function Showcase({ meta }) {
           scheduleAfterVoice(token);
         }, fallbackMs));
         return 'file';
-      } catch { /* autoplay refused or the file went away; fall through */ }
+      } catch {
+        // Autoplay with sound is often blocked until a user gesture.
+        if (!allowBrowserFallback) return 'blocked';
+      }
     }
-    if (synthesisSupported()) {
+    if (allowBrowserFallback && synthesisSupported()) {
       speak(SPOKEN_KN, {
         locale: 'kn-IN',
         onEnd: () => scheduleAfterVoice(token)
@@ -290,7 +299,7 @@ export default function Showcase({ meta }) {
     return 'none';
   };
 
-  const play = async (withVoice = false) => {
+  const play = async (withVoice = false, { fromScroll = false } = {}) => {
     clearTimers();
     stopSpeaking();
     stopAudio();
@@ -306,34 +315,15 @@ export default function Showcase({ meta }) {
       return;
     }
 
-    const mode = await startVoice(token);
+    const mode = await startVoice(token, { allowBrowserFallback: !fromScroll });
     if (runId.current !== token) return;
-    // No usable voice — still run the product beats on the silent timeline.
-    if (mode === 'none') scheduleSilent();
+    // No usable voice (or autoplay blocked) — still run the product beats.
+    if (mode === 'none' || mode === 'blocked') scheduleSilent();
   };
 
-  /* Autoplay the visuals (silently) the first time the stage is scrolled into
-     view. If motion is unwelcome we never start a timer at all and show the
-     storyboard instead, so the stage is never left blank. */
-  useEffect(() => {
-    const node = stageRef.current;
-    if (!node) return undefined;
-    if (!motionWelcome() || typeof IntersectionObserver === 'undefined') {
-      setStoryboard(true);
-      return undefined;
-    }
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) { observer.disconnect(); play(false); }
-    }, { threshold: 0.4 });
-    observer.observe(node);
-    const failsafe = setTimeout(() => setStoryboard((s) => (running ? s : s)), 12000);
-    return () => { observer.disconnect(); clearTimeout(failsafe); clearTimers(); stopSpeaking(); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  /* Ask once whether the pre-rendered clip actually exists on this deployment.
-     Cheap, cached by the browser, and it means the button can promise only what
-     it can deliver. */
+  /* Probe the clip, then try to start with sound the first time the stage is
+     scrolled into view. If motion is unwelcome we show the storyboard instead.
+     Autoplay with audio is best-effort: browsers may refuse until a click. */
   useEffect(() => {
     let cancelled = false;
     const isAudio = (response) => {
@@ -342,23 +332,76 @@ export default function Showcase({ meta }) {
     };
     fetch(AUDIO_SRC, { method: 'HEAD' })
       .then(async (r) => {
-        // A 200 is not enough. This app serves index.html for any unmatched
-        // path so client-side routing works, which means a missing asset comes
-        // back as 200 text/html — every absent file would look present. Only an
-        // audio content-type proves the clip is really there. Some hosts also
-        // omit Content-Type on HEAD, so fall through to a tiny ranged GET.
         if (isAudio(r)) {
-          if (!cancelled) setHasClip(true);
+          if (!cancelled) { setHasClip(true); setClipProbed(true); }
           return;
         }
         const probe = await fetch(AUDIO_SRC, { headers: { Range: 'bytes=0-1' } });
-        if (!cancelled) setHasClip(isAudio(probe));
+        if (!cancelled) {
+          setHasClip(isAudio(probe));
+          setClipProbed(true);
+        }
       })
-      .catch(() => { if (!cancelled) setHasClip(false); });
+      .catch(() => {
+        if (!cancelled) { setHasClip(false); setClipProbed(true); }
+      });
     return () => { cancelled = true; };
   }, []);
 
-  useEffect(() => () => { clearTimers(); stopSpeaking(); }, []);
+  useEffect(() => {
+    if (!clipProbed) return undefined;
+    const node = stageRef.current;
+    if (!node) return undefined;
+    if (!motionWelcome() || typeof IntersectionObserver === 'undefined') {
+      setStoryboard(true);
+      return undefined;
+    }
+
+    const tryStart = () => {
+      if (autoStarted.current) return;
+      autoStarted.current = true;
+      play(true, { fromScroll: true });
+    };
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return;
+      observer.disconnect();
+      tryStart();
+    }, { threshold: 0.35 });
+    observer.observe(node);
+
+    // Browsers often refuse sound until any prior gesture on the page. If the
+    // first scroll-in was silent, the next click/tap retries with voice once.
+    const onGesture = () => {
+      gestureReady.current = true;
+      if (voiceRef.current === 'file' || voiceRef.current === 'browser') {
+        window.removeEventListener('pointerdown', onGesture);
+        window.removeEventListener('keydown', onGesture);
+        return;
+      }
+      if (!hasClip || !audioRef.current) return;
+      const rect = node.getBoundingClientRect();
+      const visible = rect.top < window.innerHeight * 0.9 && rect.bottom > 0;
+      if (!visible) return;
+      play(true, { fromScroll: false });
+      window.removeEventListener('pointerdown', onGesture);
+      window.removeEventListener('keydown', onGesture);
+    };
+    window.addEventListener('pointerdown', onGesture, { passive: true });
+    window.addEventListener('keydown', onGesture);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('pointerdown', onGesture);
+      window.removeEventListener('keydown', onGesture);
+      clearTimers();
+      stopSpeaking();
+      stopAudio();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clipProbed, hasClip]);
+
+  useEffect(() => () => { clearTimers(); stopSpeaking(); stopAudio(); }, []);
 
   /* Says what actually ran on this deployment rather than claiming "AI". */
   const mode = meta?.extraction?.mode;
@@ -416,11 +459,11 @@ export default function Showcase({ meta }) {
           </span>
         </div>
 
-        {/* preload="none" so a visitor who never presses play never downloads it */}
+        {/* preload metadata once we know the clip exists so scroll-autoplay can start promptly */}
         <audio
           ref={audioRef}
           src={AUDIO_SRC}
-          preload="none"
+          preload={hasClip ? 'auto' : 'none'}
           onError={() => setHasClip(false)}
         />
       </div>
