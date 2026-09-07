@@ -252,14 +252,23 @@ export default function Showcase({ meta }) {
      it can deliver. */
   useEffect(() => {
     let cancelled = false;
+    const isAudio = (response) => {
+      const type = response.headers.get('content-type') || '';
+      return response.ok && type.startsWith('audio/');
+    };
     fetch(AUDIO_SRC, { method: 'HEAD' })
-      .then((r) => {
+      .then(async (r) => {
         // A 200 is not enough. This app serves index.html for any unmatched
         // path so client-side routing works, which means a missing asset comes
         // back as 200 text/html — every absent file would look present. Only an
-        // audio content-type proves the clip is really there.
-        const type = r.headers.get('content-type') || '';
-        if (!cancelled) setHasClip(r.ok && type.startsWith('audio/'));
+        // audio content-type proves the clip is really there. Some hosts also
+        // omit Content-Type on HEAD, so fall through to a tiny ranged GET.
+        if (isAudio(r)) {
+          if (!cancelled) setHasClip(true);
+          return;
+        }
+        const probe = await fetch(AUDIO_SRC, { headers: { Range: 'bytes=0-1' } });
+        if (!cancelled) setHasClip(isAudio(probe));
       })
       .catch(() => { if (!cancelled) setHasClip(false); });
     return () => { cancelled = true; };
@@ -309,16 +318,17 @@ export default function Showcase({ meta }) {
         </div>
 
         <div className="stage-controls">
-          <button type="button" className="btn secondary" onClick={() => play(false)}>
-            {running ? t('show.replaying') : t('show.replay')}
-          </button>
           <button type="button" className="btn primary" onClick={() => play(true)}>
             <span aria-hidden="true">▶</span> {t('show.withVoice')}
           </button>
+          <button type="button" className="btn secondary" onClick={() => play(false)}>
+            {running ? t('show.replaying') : t('show.replay')}
+          </button>
           <span className="stage-note">
+            {voice === 'file' && t('show.voiceNote')}
             {voice === 'browser' && t('show.voiceBrowser')}
             {voice === 'none' && t('show.voiceNone')}
-            {voice !== 'browser' && voice !== 'none' && (hasClip ? t('show.voiceNote') : t('show.voiceNoClip'))}
+            {voice === 'idle' && (hasClip ? t('show.voiceNote') : t('show.voiceNoClip'))}
           </span>
         </div>
 
