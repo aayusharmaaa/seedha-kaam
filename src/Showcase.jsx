@@ -452,10 +452,9 @@ export default function Showcase({ meta }) {
             {running ? t('show.replaying') : t('show.replay')}
           </button>
           <span className="stage-note">
-            {voice === 'file' && t('show.voiceNote')}
             {voice === 'browser' && t('show.voiceBrowser')}
             {voice === 'none' && t('show.voiceNone')}
-            {voice === 'idle' && (hasClip ? t('show.voiceNote') : t('show.voiceNoClip'))}
+            {voice === 'idle' && !hasClip && t('show.voiceNoClip')}
           </span>
         </div>
 
