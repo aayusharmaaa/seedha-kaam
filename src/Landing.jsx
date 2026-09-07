@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { api } from './api.js';
+import Showcase from './Showcase.jsx';
 import { FALLBACK_META } from './demo-meta.js';
 import { Brand, Button, Counter, FlowArrow, LanguageSwitch, Reveal, RingStat, scrollToSection, SiteFooter, SiteNav, SpeakButton, useLang, useStagedEntrance, rupees } from './ui.jsx';
 
@@ -674,6 +675,7 @@ export default function Landing({ meta, onStart, starting, focusSection }) {
         </div>
       </section>
 
+      <Showcase meta={meta} />
       <Evidence />
       <PriceContrast />
       <Mechanics />

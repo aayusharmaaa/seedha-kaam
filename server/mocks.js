@@ -99,6 +99,14 @@ export const MOCK_REGISTER = [
     productionPath: 'The same, with on-device pre-processing for face and signature regions where the browser allows it.'
   },
   {
+    id: 'showcase-voice',
+    area: 'The Kannada voice in the landing-page showcase',
+    status: 'browser-native',
+    whatWeDo: 'The spoken line is a pre-rendered audio file when one has been generated with "npm run voice", which calls ElevenLabs at build time. If that file is absent, the browser\'s own Kannada synthesis reads the same sentence, and if the browser has no Kannada voice the captions carry it alone. Nothing is generated at request time.',
+    whatIsReal: 'The words. It is Lakshmi\'s actual demo utterance, the same string the intake parser is given, so what you hear is what the engine reads.',
+    productionPath: 'The same shape, applied to the defect ledger: one clip per (defect code x language), rendered once and served flat. That is roughly 141 clips in total, which is why voice output does not get more expensive as more citizens use it.'
+  },
+  {
     id: 'voice',
     area: 'Voice input and spoken output',
     status: 'browser-native',

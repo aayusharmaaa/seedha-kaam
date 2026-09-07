@@ -1660,3 +1660,190 @@ button:disabled { cursor: not-allowed; opacity: .5; }
   position: absolute; inset: 0; display: grid; place-items: center;
   font-family: var(--serif); font-size: 1.1rem; font-weight: 600; color: var(--deep);
 }
+
+/* ==================================================================
+   THE SHOWCASE
+
+   A fifteen-second film of the product working. Same rule as everywhere else:
+   scenes animate in with `both` fill because they mount fresh each time, and
+   the whole stage falls back to a static four-panel storyboard when motion is
+   unwelcome — so it is never a blank rectangle waiting for a timer.
+   ================================================================== */
+
+.showcase { background: var(--ink); color: #eee9dd; padding: 3.4rem 1.15rem 3.8rem; }
+.showcase .section-head { margin-bottom: 1.6rem; }
+
+.stage { max-width: var(--wrap); margin: 0 auto; }
+
+.stage-rail { display: flex; gap: .4rem; list-style: none; margin: 0 0 .9rem; padding: 0; }
+.stage-rail li { height: 3px; flex: 1; border-radius: 2px; background: rgba(255,255,255,.14); transition: background .4s ease; }
+.stage-rail li.done { background: rgba(201,231,85,.4); }
+.stage-rail li.on { background: var(--lime); }
+
+.stage-screen {
+  position: relative; min-height: 340px;
+  background: rgba(255,255,255,.045);
+  border: 1px solid rgba(255,255,255,.12); border-radius: var(--radius);
+  padding: 1.6rem 1.4rem;
+  display: grid; align-content: center;
+}
+.stage.storyboard .stage-screen { display: grid; gap: 1.6rem; align-content: start; }
+.stage.storyboard .stage-rail li { background: rgba(201,231,85,.4); }
+
+.scene-slot { animation: scene-in .5s cubic-bezier(.2,.8,.3,1) both; }
+@keyframes scene-in { from { opacity: 0; transform: translateY(14px); } }
+
+.sc { display: grid; justify-items: center; text-align: center; gap: .7rem; }
+.sc h3 { font-family: var(--serif); font-size: clamp(1.3rem, 4vw, 2rem); font-weight: 600; color: #fffdf8; letter-spacing: -.02em; }
+.sc-step { font: 500 .7rem/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--lime); }
+.sc-note { font-size: .8rem; color: #a9b2a8; max-width: 56ch; margin: .3rem 0 0; line-height: 1.55; }
+.sc-tag { font: 500 .72rem/1.4 var(--mono); letter-spacing: .04em; color: #9aa39a; }
+
+/* ---- 1 · the voice ---------------------------------------------- */
+
+.sc-mic {
+  position: relative; display: grid; place-items: center;
+  width: 62px; height: 62px; border-radius: 50%;
+  background: var(--deep); color: var(--lime);
+  animation: mic-in .45s cubic-bezier(.3,1.4,.5,1) both;
+}
+@keyframes mic-in { from { opacity: 0; transform: scale(.7); } }
+.mic-halo { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--lime); opacity: 0; animation: halo 2s ease-out infinite; }
+.mic-halo.two { animation-delay: 1s; }
+@keyframes halo { 0% { opacity: .55; transform: scale(1); } 100% { opacity: 0; transform: scale(1.85); } }
+
+.wave { display: flex; align-items: center; gap: 3px; height: 46px; }
+.wave span {
+  width: 3px; border-radius: 2px; background: var(--lime); opacity: .75;
+  height: calc(var(--h) * 1%);
+  animation: wave 1.05s ease-in-out infinite;
+  animation-delay: calc(var(--i) * -60ms);
+}
+@keyframes wave { 0%, 100% { transform: scaleY(.32); } 50% { transform: scaleY(1); } }
+
+.sc-caption {
+  font-family: var(--knda); font-size: clamp(1rem, 2.6vw, 1.3rem); line-height: 1.65;
+  color: #fffdf8; max-width: 46ch; margin: 0;
+}
+.sc-caption span { display: inline-block; animation: word-up .38s cubic-bezier(.2,.85,.3,1) both; animation-delay: calc(.35s + var(--w) * .11s); }
+.sc-gloss { font-size: .84rem; color: #a9b2a8; max-width: 52ch; font-style: italic; margin: 0; }
+
+/* ---- 2 · the intake --------------------------------------------- */
+
+.chips { display: flex; flex-wrap: wrap; justify-content: center; gap: .55rem; margin-top: .3rem; }
+.chip {
+  display: grid; gap: .1rem; text-align: left;
+  background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14);
+  border-radius: var(--radius-s); padding: .6rem .85rem;
+  animation: chip-in .42s cubic-bezier(.3,1.35,.5,1) both;
+  animation-delay: calc(.25s + var(--c) * .13s);
+}
+@keyframes chip-in { from { opacity: 0; transform: translateY(10px) scale(.94); } }
+.chip-k { font: 500 .64rem/1 var(--mono); letter-spacing: .09em; text-transform: uppercase; color: #98a29a; }
+.chip-v { font-size: .95rem; font-weight: 600; color: var(--lime); }
+
+/* ---- 3 · the documents ------------------------------------------ */
+
+.doc-strip { display: flex; gap: .55rem; justify-content: center; flex-wrap: wrap; margin-top: .3rem; }
+.doc-mini {
+  position: relative; overflow: hidden;
+  width: 74px; padding: 9px 8px 22px;
+  background: #fffdf8; border-radius: 4px;
+  box-shadow: 0 8px 18px -10px rgba(0,0,0,.7);
+  animation: doc-in .45s cubic-bezier(.2,.9,.3,1) both;
+  animation-delay: calc(.2s + var(--d) * .1s);
+}
+@keyframes doc-in { from { opacity: 0; transform: translateY(16px) rotate(-4deg); } }
+.doc-mini i { display: block; height: 3px; border-radius: 2px; background: var(--line); margin-bottom: 5px; }
+.doc-mini i:nth-child(3) { width: 72%; }
+.doc-mini i:nth-child(4) { width: 55%; }
+.doc-mini-name {
+  position: absolute; left: 0; right: 0; bottom: 5px;
+  font: 500 .52rem/1.2 var(--mono); color: var(--muted); text-align: center;
+  padding: 0 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* the scan sweep across each document */
+.doc-scan {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, transparent 0%, rgba(201,231,85,.55) 50%, transparent 100%);
+  transform: translateY(-100%);
+  animation: scan 1.15s cubic-bezier(.4,.1,.3,1) both;
+  animation-delay: calc(.75s + var(--d) * .1s);
+}
+@keyframes scan { to { transform: translateY(100%); } }
+
+/* The consistency graph made visible: two spellings, one person. */
+.match {
+  display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: .5rem .7rem;
+  margin-top: 1.1rem;
+  animation: rise .5s cubic-bezier(.2,.8,.3,1) both; animation-delay: 1.55s;
+}
+.match-side {
+  font-family: var(--mono); font-size: .82rem; color: #fffdf8;
+  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.16);
+  border-radius: 5px; padding: .35rem .6rem;
+}
+.match-link { width: 90px; height: 18px; overflow: visible; }
+.match-link path {
+  fill: none; stroke: var(--lime); stroke-width: 2; stroke-linecap: round; stroke-dasharray: .06 .06;
+  animation: link-draw 1s ease both; animation-delay: 1.75s;
+}
+@keyframes link-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+.match-verdict {
+  flex-basis: 100%; font: 600 .76rem/1 var(--mono); letter-spacing: .05em;
+  text-transform: uppercase; color: var(--lime);
+  animation: rise .4s ease both; animation-delay: 2.3s;
+}
+
+/* ---- 4 · the verdict -------------------------------------------- */
+
+.sc-verdict { grid-template-columns: auto 1fr; justify-items: start; text-align: left; gap: 1.6rem; align-items: center; }
+.sc-ring {
+  width: 122px; height: 122px; border-radius: 50%; display: grid; place-items: center; flex: none;
+  background: conic-gradient(var(--rust) calc(var(--pct) * 1%), rgba(255,255,255,.12) 0);
+  transition: --pct 1s cubic-bezier(.25,.85,.35,1);
+}
+.sc-ring-in {
+  width: 100px; height: 100px; border-radius: 50%; background: var(--ink);
+  display: grid; place-items: center; align-content: center; text-align: center;
+}
+.sc-ring-in strong { font-family: var(--serif); font-size: 2.4rem; line-height: 1; color: #fffdf8; }
+.sc-ring-in span { font: 500 .62rem/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: #9aa39a; margin-top: .25rem; }
+
+.sc-verdict-copy { display: grid; gap: .55rem; }
+.sc-findings { list-style: none; margin: .2rem 0 0; padding: 0; display: grid; gap: .45rem; }
+.sc-findings li {
+  display: flex; gap: .6rem; align-items: baseline; font-size: .92rem; color: #d8d2c4;
+  animation: rise .42s cubic-bezier(.2,.8,.3,1) both;
+  animation-delay: calc(.5s + var(--f) * .14s);
+}
+.sc-findings code { font-size: .74rem; color: var(--rust); background: rgba(193,74,34,.16); padding: .2rem .38rem; border-radius: 4px; flex: none; }
+.sc-punch {
+  margin: .5rem 0 0; font-family: var(--serif); font-size: clamp(1rem, 3vw, 1.3rem);
+  color: var(--lime); line-height: 1.35;
+  animation: rise .45s ease both; animation-delay: .95s;
+}
+
+/* ---- controls ---------------------------------------------------- */
+
+.stage-controls { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin-top: 1rem; }
+.stage-controls .btn.secondary { background: transparent; color: #eee9dd; border-color: rgba(255,255,255,.24); }
+.stage-controls .btn.secondary:hover { border-color: var(--lime); }
+.stage-controls .btn.primary { background: var(--lime); color: var(--ink); }
+.stage-note { font-size: .74rem; color: #939c92; flex: 1 1 16rem; line-height: 1.5; }
+
+@media (max-width: 700px) {
+  .stage-screen { min-height: 380px; padding: 1.3rem 1rem; }
+  .sc-verdict { grid-template-columns: 1fr; justify-items: center; text-align: center; gap: 1.1rem; }
+  .sc-findings li { text-align: left; }
+  .doc-mini { width: 58px; padding: 7px 6px 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene-slot, .sc-mic, .sc-caption span, .chip, .doc-mini, .doc-scan,
+  .match, .match-link path, .match-verdict, .sc-findings li, .sc-punch,
+  .wave span, .mic-halo { animation: none; }
+  .doc-scan { display: none; }
+  .sc-ring { transition: none; }
+}

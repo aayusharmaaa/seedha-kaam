@@ -334,7 +334,7 @@ export function NavSectionLink({ route, className = '', children }) {
  *
  * The entrance is a nicety. Being able to read the page is not.
  */
-const motionWelcome = () => typeof window !== 'undefined'
+export const motionWelcome = () => typeof window !== 'undefined'
   && document.visibilityState === 'visible'
   && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
