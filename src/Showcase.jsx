@@ -27,6 +27,8 @@ import { motionWelcome, useLang } from './ui.jsx';
  * `npm run voice` renders it from ElevenLabs. Without that file we fall back to
  * the browser's own Kannada synthesis, and failing that, to captions alone.
  * Nothing here ever autoplays with sound; browsers forbid it and it is rude.
+ * When voice plays, the speak scene holds until the clip ends, then intake →
+ * documents → verdict advance in sequence.
  * ================================================================== */
 
 const AUDIO_SRC = '/audio/lakshmi-intake-kn.mp3';
@@ -36,8 +38,22 @@ const AUDIO_SRC = '/audio/lakshmi-intake-kn.mp3';
 const SPOKEN_KN = 'ಸರ್, ನಾನು ಅಪ್ಪನ ಮನೆಯ ಖಾತಾ ಟ್ರಾನ್ಸ್‌ಫರ್ ಮಾಡ್ಬೇಕು. ಅಪ್ಪ ಕಳೆದ ನವೆಂಬರ್‌ನಲ್ಲಿ ತೀರಿಕೊಂಡ್ರು. ಮನೆ ಬ್ರೂಕ್‌ಫೀಲ್ಡ್‌ನಲ್ಲಿ ಇದೆ, ಅದನ್ನ ಮಾರ್ಬೇಕು. ಪೇಪರ್ಸ್ ಎಲ್ಲಾ ಇದೆ.';
 
 const SCENES = ['speak', 'intake', 'documents', 'verdict'];
-const MARKS = [0, 5600, 9200, 13800];
-const RUNTIME = 19000;
+
+/** Silent autoplay / replay without voice — fixed beats from t=0. */
+const SILENT_MARKS = [0, 5600, 9200, 13800];
+const SILENT_RUNTIME = 19000;
+
+/**
+ * After the Kannada line finishes, advance the remaining product beats.
+ * Speak stays on screen for the whole clip (~11s for the shipped MP3).
+ */
+const AFTER_VOICE = {
+  intake: 450,
+  documents: 4000,
+  verdict: 8600,
+  ring: 8850,
+  done: 13800
+};
 
 /* ------------------------------------------------------------------ *
  * Scene 1 — she speaks
@@ -187,26 +203,53 @@ export default function Showcase({ meta }) {
   const stageRef = useRef(null);
   const audioRef = useRef(null);
   const timers = useRef([]);
+  const runId = useRef(0);
+  const afterVoiceStarted = useRef(false);
 
   const clearTimers = () => { timers.current.forEach(clearTimeout); timers.current = []; };
 
-  const play = (withVoice = false) => {
-    clearTimers();
-    stopSpeaking();
-    setScene(0);
-    setRingPct(0);
-    setRunning(true);
-
-    MARKS.forEach((at, index) => {
-      timers.current.push(setTimeout(() => setScene(index), at));
-    });
-    timers.current.push(setTimeout(() => setRingPct(51), MARKS[3] + 250));
-    timers.current.push(setTimeout(() => setRunning(false), RUNTIME));
-
-    if (withVoice) startVoice();
+  const stopAudio = () => {
+    const el = audioRef.current;
+    if (!el) return;
+    try { el.pause(); el.currentTime = 0; } catch { /* ignore */ }
   };
 
-  const startVoice = async () => {
+  const scheduleSilent = () => {
+    SILENT_MARKS.forEach((at, index) => {
+      timers.current.push(setTimeout(() => setScene(index), at));
+    });
+    timers.current.push(setTimeout(() => setRingPct(51), SILENT_MARKS[3] + 250));
+    timers.current.push(setTimeout(() => setRunning(false), SILENT_RUNTIME));
+  };
+
+  /** Intake → documents → verdict after the spoken line ends. */
+  const scheduleAfterVoice = (token) => {
+    if (runId.current !== token || afterVoiceStarted.current) return;
+    afterVoiceStarted.current = true;
+    setVoice('idle');
+    timers.current.push(setTimeout(() => {
+      if (runId.current !== token) return;
+      setScene(1);
+    }, AFTER_VOICE.intake));
+    timers.current.push(setTimeout(() => {
+      if (runId.current !== token) return;
+      setScene(2);
+    }, AFTER_VOICE.documents));
+    timers.current.push(setTimeout(() => {
+      if (runId.current !== token) return;
+      setScene(3);
+    }, AFTER_VOICE.verdict));
+    timers.current.push(setTimeout(() => {
+      if (runId.current !== token) return;
+      setRingPct(51);
+    }, AFTER_VOICE.ring));
+    timers.current.push(setTimeout(() => {
+      if (runId.current !== token) return;
+      setRunning(false);
+    }, AFTER_VOICE.done));
+  };
+
+  const startVoice = async (token) => {
     const el = audioRef.current;
     // Only reach for the file if we know it is there. HTMLMediaElement.play()
     // does NOT reliably reject for a missing source — it can resolve and then
@@ -215,17 +258,58 @@ export default function Showcase({ meta }) {
     if (hasClip && el) {
       try {
         el.currentTime = 0;
+        const onEnded = () => {
+          el.removeEventListener('ended', onEnded);
+          scheduleAfterVoice(token);
+        };
+        el.addEventListener('ended', onEnded);
         await el.play();
+        if (runId.current !== token) return 'cancelled';
         setVoice('file');
-        return;
+        // If ended never fires (corrupt clip), unlock the rest of the demo.
+        const fallbackMs = Number.isFinite(el.duration) && el.duration > 0
+          ? Math.ceil(el.duration * 1000) + 800
+          : 14000;
+        timers.current.push(setTimeout(() => {
+          el.removeEventListener('ended', onEnded);
+          scheduleAfterVoice(token);
+        }, fallbackMs));
+        return 'file';
       } catch { /* autoplay refused or the file went away; fall through */ }
     }
     if (synthesisSupported()) {
-      speak(SPOKEN_KN, { locale: 'kn-IN', onEnd: () => setVoice((v) => (v === 'browser' ? 'idle' : v)) });
+      speak(SPOKEN_KN, {
+        locale: 'kn-IN',
+        onEnd: () => scheduleAfterVoice(token)
+      });
+      if (runId.current !== token) return 'cancelled';
       setVoice('browser');
-      return;
+      return 'browser';
     }
     setVoice('none');
+    return 'none';
+  };
+
+  const play = async (withVoice = false) => {
+    clearTimers();
+    stopSpeaking();
+    stopAudio();
+    const token = ++runId.current;
+    afterVoiceStarted.current = false;
+    setScene(0);
+    setRingPct(0);
+    setRunning(true);
+    setVoice('idle');
+
+    if (!withVoice) {
+      scheduleSilent();
+      return;
+    }
+
+    const mode = await startVoice(token);
+    if (runId.current !== token) return;
+    // No usable voice — still run the product beats on the silent timeline.
+    if (mode === 'none') scheduleSilent();
   };
 
   /* Autoplay the visuals (silently) the first time the stage is scrolled into
@@ -337,8 +421,7 @@ export default function Showcase({ meta }) {
           ref={audioRef}
           src={AUDIO_SRC}
           preload="none"
-          onEnded={() => setVoice('idle')}
-          onError={() => { setHasClip(false); if (voice === 'file') startVoice(); }}
+          onError={() => setHasClip(false)}
         />
       </div>
     </section>
