@@ -1019,6 +1019,21 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 .journey-main, .page { max-width: 940px; margin: 0 auto; padding: 0 1.15rem; }
 .page { padding-bottom: 3rem; }
 
+/* What the next eight steps cost, and what you leave with. Shown on the way in
+   and retired once there is a verdict on screen. */
+.journey-expect {
+  max-width: 940px;
+  margin: .9rem auto -.2rem;
+  padding: 0 1.15rem;
+  font-size: .92rem;
+  line-height: 1.5;
+  color: var(--muted);
+  text-align: center;
+  text-wrap: balance;
+}
+.journey-expect:lang(kn) { font-family: var(--knda); }
+.journey-expect:lang(hi) { font-family: var(--deva); }
+
 .card {
   background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
   padding: 1.4rem; box-shadow: var(--shadow);

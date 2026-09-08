@@ -5,7 +5,7 @@ import { warmVoices } from './speech.js';
 import Landing, { PersonaPicker } from './Landing.jsx';
 import Journey from './Journey.jsx';
 import { MocksPage, RulebookPage } from './Pages.jsx';
-import { LanguageProvider, MockBanner, Notice, OfflineBar, landingSectionForRoute, useHashRoute, useLang } from './ui.jsx';
+import { LanguageProvider, MockBanner, Notice, OfflineBar, Spinner, landingSectionForRoute, useHashRoute, useLang } from './ui.jsx';
 
 function CaseGate() {
   useEffect(() => {
@@ -28,6 +28,11 @@ function Shell() {
   const [caseData, setCaseData] = useState(null);
   const [starting, setStarting] = useState('');
   const [error, setError] = useState('');
+  // True only while a stored case is being restored. Without it, a reload on
+  // /case/<step> rendered CaseGate first — and a child's effect runs before its
+  // parent's, so CaseGate bounced to /start before the resume below had a
+  // chance to run, throwing away the step in the URL.
+  const [resuming, setResuming] = useState(() => Boolean(getStoredCaseId()));
 
   useEffect(() => {
     let cancelled = false;
@@ -48,7 +53,8 @@ function Shell() {
       .then((r) => { setCaseData(r.case); setStoredCase(r.case); })
       .catch(() => {
         if (!getStoredCase()) setStoredCaseId(null);
-      });
+      })
+      .finally(() => setResuming(false));
   }, []);
 
   const start = useCallback(async (personaId) => {
@@ -93,10 +99,26 @@ function Shell() {
   }
 
   if (route.startsWith('/case')) {
+    if (resuming && !caseData) {
+      return <main className="page"><Spinner label="Opening your case…" /></main>;
+    }
     if (!caseData) {
       return <CaseGate />;
     }
-    return <Journey caseData={caseData} setCaseData={setCaseData} meta={meta} onExit={exit} onRestart={restart} />;
+    // The journey owns which of its steps the route names; it just needs the
+    // route and a way to change it, so that Back walks the steps rather than
+    // leaving the case altogether.
+    return (
+      <Journey
+        caseData={caseData}
+        setCaseData={setCaseData}
+        meta={meta}
+        route={route}
+        navigate={navigate}
+        onExit={exit}
+        onRestart={restart}
+      />
+    );
   }
 
   return (

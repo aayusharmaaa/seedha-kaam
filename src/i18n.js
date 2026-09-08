@@ -99,6 +99,7 @@ const STRINGS = {
     'step.packet': 'Your packet',
     'step.clock': 'The clock',
     'step.done': 'Done',
+    'journey.expect': 'About five minutes. You leave with two documents to hand across the counter, and a deadline that is legally yours.',
 
     'common.back': 'Back',
     'common.next': 'Continue',
@@ -304,6 +305,7 @@ const STRINGS = {
     'step.packet': 'ನಿಮ್ಮ ಕಡತ',
     'step.clock': 'ಗಡುವು',
     'step.done': 'ಮುಗಿಯಿತು',
+    'journey.expect': 'ಸುಮಾರು ಐದು ನಿಮಿಷ. ಕೌಂಟರ್‌ನಲ್ಲಿ ಕೊಡಲು ಎರಡು ದಾಖಲೆಗಳು ಮತ್ತು ಕಾನೂನುಬದ್ಧವಾಗಿ ನಿಮ್ಮದೇ ಆದ ಗಡುವು ನಿಮಗೆ ಸಿಗುತ್ತದೆ.',
 
     'common.back': 'ಹಿಂದೆ',
     'common.next': 'ಮುಂದೆ',
@@ -509,6 +511,7 @@ const STRINGS = {
     'step.packet': 'आपका पैकेट',
     'step.clock': 'घड़ी',
     'step.done': 'पूरा',
+    'journey.expect': 'लगभग पाँच मिनट। आप दो दस्तावेज़ लेकर जाएँगे जो काउंटर पर देने हैं, और एक समय-सीमा जो कानूनन आपकी है।',
 
     'common.back': 'पीछे',
     'common.next': 'आगे',

@@ -279,7 +279,15 @@ export function useHashRoute() {
     window.addEventListener('hashchange', handler);
     return () => window.removeEventListener('hashchange', handler);
   }, []);
-  return [route, (next) => { window.location.hash = next; }];
+  // navigate(to) pushes a history entry; navigate(to, { replace: true }) swaps
+  // the current one. Replace matters when a route is only being canonicalised
+  // — rewriting "/case" to "/case/intake" by pushing would leave "/case" behind
+  // in the history, and pressing Back onto it would just redirect forward
+  // again, trapping the user on the first step.
+  return [route, (next, { replace = false } = {}) => {
+    if (replace) window.location.replace(next.startsWith('#') ? next : `#${next}`);
+    else window.location.hash = next;
+  }];
 }
 
 /** Nav routes that open the landing page at a specific infographic section. */

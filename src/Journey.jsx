@@ -964,9 +964,27 @@ function DoneStep({ caseData, evaluation, onRestart }) {
  * Shell
  * ================================================================== */
 
-export default function Journey({ caseData, setCaseData, meta, onExit, onRestart }) {
+/**
+ * Where an arriving case belongs when the URL does not name a step.
+ *
+ * A case with a clock attached was filed days or weeks ago and is being looked
+ * at again — that journey is inherently multi-session, and it was the one
+ * landing people back on the first screen with every document already filled
+ * in. Everything else starts where it always did.
+ */
+function resumeStep(caseData) {
+  if (caseData?.clock) return 'clock';
+  return caseData?.personaId ? 'intake' : 'language';
+}
+
+export default function Journey({ caseData, setCaseData, meta, route, navigate, onExit, onRestart }) {
   const { t, language } = useLang();
-  const [step, setStep] = useState(caseData.personaId ? 'intake' : 'language');
+  // The step lives in the URL rather than in component state. Held in state, it
+  // made the browser Back button leave the case entirely instead of going back
+  // one step — which on a phone, where Back is the main way to move, meant
+  // losing everything — and made a reload drop you at the first screen.
+  const namedStep = route.split('/')[2] || '';
+  const step = STEPS.includes(namedStep) ? namedStep : resumeStep(caseData);
   const [evaluation, setEvaluation] = useState(caseData.lastEvaluation || null);
   const [kinds, setKinds] = useState({});
 
@@ -987,7 +1005,14 @@ export default function Journey({ caseData, setCaseData, meta, onExit, onRestart
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [language]);
 
-  const go = (next) => { setStep(next); window.scrollTo({ top: 0 }); };
+  // Rewrite an absent or unrecognised step segment to the one actually on
+  // screen, so every step is linkable and survives a reload.
+  useEffect(() => {
+    if (namedStep !== step) navigate(`/case/${step}`, { replace: true });
+  }, [namedStep, step, navigate]);
+
+  // No scrollTo here: the hash router already scrolls on every route change.
+  const go = (next) => navigate(`/case/${next}`);
   const at = STEPS.indexOf(step);
   const next = () => go(STEPS[Math.min(at + 1, STEPS.length - 1)]);
   const back = () => go(STEPS[Math.max(at - 1, 0)]);
@@ -1006,6 +1031,13 @@ export default function Journey({ caseData, setCaseData, meta, onExit, onRestart
       </header>
 
       <Rail step={step} />
+
+      {/* Eight steps is a real commitment to ask for blind. Say what it costs
+          and what you walk away with, before the first question — and stop
+          saying it once there is an evaluation, because by then they know. */}
+      {(step === 'language' || step === 'intake') && !caseData.lastEvaluation && (
+        <p className="journey-expect">{t('journey.expect')}</p>
+      )}
 
       <main className="journey-main">
         {step === 'language' && <LanguageStep onNext={next} />}
