@@ -434,7 +434,7 @@ prototype is built so these are extensions, not rewrites.
 
 | Area | Today | Future |
 |---|---|---|
-| **Payments** | No payment screen | Payment gateway, receipt, refund path tied to the “refunded if work not done” guarantee |
+| **Payments** | No checkout yet; landing states intended **₹500** fixed fee for the route | Payment gateway, receipt, refund if work not done |
 | **Submission** | Citizen files the packet themselves | Stays citizen-submitted; no portal credential storage or screen-scraping |
 | **Appeals & RTI** | Drafted and downloadable PDFs | Optional filing integration with official grievance channels, on explicit citizen instruction each time |
 | **Government data access** | Citizen uploads own documents | Consent-based civic data transport (account-aggregator model for property records, when it exists) |

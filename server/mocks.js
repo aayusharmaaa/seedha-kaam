@@ -46,9 +46,9 @@ export const MOCK_REGISTER = [
     id: 'payments',
     area: 'Payments',
     status: 'absent',
-    whatWeDo: 'No payment is taken, and there is no payment screen. The ₹500 figure on the landing page is the intended price of the service, not a charge made here, and the refund line beside it describes an intended commercial term rather than one this prototype can honour.',
-    whatIsReal: 'Nothing to be real — there is no payment flow at all.',
-    productionPath: 'A payment gateway with a receipt, and a refund path tied to the guarantee.'
+    whatWeDo: 'No payment is taken yet — there is no checkout. The ₹500 on the landing page is the intended fixed price of Seedha Kaam’s route (pre-flight, packet, clock), not a charge made in this prototype, and not the government’s notified counter fee. The refund line describes the intended commercial term once payments exist.',
+    whatIsReal: 'The price point and the split: ₹500 for the route; public facts stay free; counter fees stay with the office that issues a receipt.',
+    productionPath: 'A payment gateway charging a fixed ₹500, with a receipt and a refund path tied to the “work not done” guarantee.'
   },
   {
     id: 'boundaries',

@@ -467,10 +467,11 @@ export function streamPacket(res, { caseData, evaluation, jurisdiction, language
     'Ask for an acknowledgement number and check that it is written on your copy. Without it there is no clock and no appeal.',
     'Ask which service name the application was booked under and how many days it is allowed. Both are printed on the acknowledgement slip.',
     'If you are told the papers are not in order, ask which enclosure and which field. The readiness report names every check that was run and what it found.',
-    // No number here on purpose: we have not sourced the notified fee for this
-    // service, and inventing one in the document that is supposed to protect
-    // people from being overcharged would be the worst possible place to guess.
-    'Ask what the notified fee is and pay it at the counter that issues a receipt. Money asked for without a receipt is not a fee, whatever it is called.'
+    // Government fee: no number — we have not sourced the notified schedule,
+    // and inventing one in the document meant to stop overcharging would be
+    // the worst place to guess. Product fee (₹500) is named only as separate
+    // from this counter — never as an amount to pay here.
+    'Ask what the notified government fee is and pay it at the counter that issues a receipt. Money asked for without a receipt is not a fee, whatever it is called. Seedha Kaam’s own fixed ₹500 (when payment is enabled) is separate and is never paid at this counter.'
   ].forEach((line) => {
     doc.font('Helvetica').fontSize(10.3).fillColor(INK).text('•  ' + line, { lineGap: 1.2 });
     doc.moveDown(0.25);

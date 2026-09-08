@@ -242,8 +242,9 @@ function PriceContrast() {
           pretend otherwise.
         </p>
         <span className="price-note">
-          Payments are not implemented in this prototype — there is no payment screen at all.
-          See <a href="#/mocks">what is mocked</a>.
+          Intended product fee: <strong>₹500</strong> for the route — refunded if the work
+          does not get done. Payment is not wired in this prototype yet (no checkout).
+          Government counter fees stay separate; see <a href="#/mocks">what is mocked</a>.
         </span>
       </div>
     </section>
