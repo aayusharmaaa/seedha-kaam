@@ -1151,11 +1151,10 @@ export default function Journey({ caseData, setCaseData, meta, route, navigate, 
         {step === 'done' && <DoneStep caseData={caseData} evaluation={evaluation} onRestart={onRestart} />}
       </main>
 
-      {/* Available at every step, because the question a citizen has is rarely
-          about the screen they happen to be looking at. It answers from
-          whatever exists yet — and says so plainly when a step has not been
-          reached rather than inventing an answer for it. */}
-      <Assistant caseData={caseData} evaluation={evaluation} />
+      {/* Ask sits on the check step only — that is where the findings live, and
+          where a retrieved answer from the ledger is useful without becoming a
+          tour guide for the rest of the journey. */}
+      {step === 'check' && <Assistant caseData={caseData} evaluation={evaluation} />}
     </div>
   );
 }
