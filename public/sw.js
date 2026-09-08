@@ -18,7 +18,7 @@
  * silently replaying a submission later would be worse than failing now.
  */
 
-const VERSION = 'seedha-v7';
+const VERSION = 'seedha-v8';
 const SHELL = `${VERSION}-shell`;
 const DATA = `${VERSION}-data`;
 
