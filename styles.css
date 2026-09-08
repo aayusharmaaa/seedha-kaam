@@ -1929,16 +1929,26 @@ button:disabled { cursor: not-allowed; opacity: .5; }
   50%      { opacity: .32; transform: scale(1.05); }
 }
 .orb-open .orb-halo { animation: none; opacity: .4; }
+/* ------------------------------------------------------------------ *
+ * The panel
+ *
+ * Reply turns are `.bot-turn.reply`, never `.bot-turn.bot`. `.bot` is this
+ * panel's own selector, so a reply carrying that class picked up
+ * position:fixed, the panel border, the shadow and the bottom/right offsets,
+ * and rendered as a floating card outside the panel it lived in.
+ * ------------------------------------------------------------------ */
 
 .bot {
   position: fixed;
   right: clamp(.6rem, 3vw, 1.6rem);
-  bottom: calc(clamp(.9rem, 3vw, 1.6rem) + 3.5rem);
+  bottom: calc(clamp(.9rem, 3vw, 1.6rem) + 3.9rem);
   z-index: 71;
-  width: min(24rem, calc(100vw - 1.2rem));
-  max-height: min(34rem, calc(100vh - 7rem));
   display: flex;
   flex-direction: column;
+  width: min(25rem, calc(100vw - 1.2rem));
+  /* Sized against the SMALL viewport unit so an iOS toolbar sliding in cannot
+     push the input off the bottom of the screen. */
+  max-height: min(32rem, calc(100svh - 7.5rem));
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -1946,109 +1956,143 @@ button:disabled { cursor: not-allowed; opacity: .5; }
   overflow: hidden;
   animation: bot-in .16s ease-out;
 }
-@keyframes bot-in { from { opacity: 0; transform: translateY(8px); } }
+@keyframes bot-in { from { opacity: 0; transform: translateY(8px) scale(.99); } }
 
 .bot-head {
+  flex-shrink: 0;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: .5rem;
-  padding: .8rem .9rem .7rem;
+  padding: .75rem .9rem .7rem;
   background: var(--deep);
   color: #f3f1e8;
-  flex-shrink: 0;
 }
-.bot-head strong { display: block; font: 600 .96rem/1.3 var(--sans); }
-.bot-head span { display: block; margin-top: .2rem; font-size: .74rem; line-height: 1.4; opacity: .75; }
+.bot-head strong { display: block; font: 600 .95rem/1.3 var(--sans); }
+.bot-head span { display: block; margin-top: .18rem; font-size: .73rem; line-height: 1.45; opacity: .72; }
 .bot-close {
-  background: none; border: 0; color: #f3f1e8;
-  font-size: 1.3rem; line-height: 1; padding: 0 .15rem; opacity: .8;
+  background: none; border: 0; color: #f3f1e8; font-size: 1.25rem;
+  line-height: 1; padding: 0 .1rem; opacity: .75; flex-shrink: 0;
 }
 .bot-close:hover { opacity: 1; }
 
-/* min-height: 0 is required so a long first answer scrolls inside the log
-   instead of growing over the chips and input. */
+/* One scrolling row rather than a wrapped block. Wrapped, six chips took 118px
+   of a 199px panel and squeezed the answer log to 24px — which is what pushed
+   the replies out of the panel in the first place. */
+.bot-chips {
+  flex-shrink: 0;
+  display: flex;
+  gap: .32rem;
+  padding: .6rem .9rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+  /* A fade on the right edge, so a row that scrolls looks like one. Painted as
+     a non-scrolling background attachment, otherwise it slides away with the
+     chips and stops meaning anything. */
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent 100%);
+  mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent 100%);
+}
+.bot-chips::-webkit-scrollbar { display: none; }
+.bot-chips button {
+  flex: 0 0 auto;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: .3rem .7rem;
+  font-size: .75rem;
+  line-height: 1.3;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.bot-chips button:hover { background: var(--paper-2); border-color: var(--deep-2); color: var(--deep); }
+
 .bot-log {
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: 0;              /* without this a flex child refuses to shrink */
   overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: .75rem .9rem;
+  padding: .85rem .9rem 1rem;
   display: flex;
   flex-direction: column;
-  gap: .7rem;
+  gap: .85rem;
 }
 
-.bot-turn p { margin: 0; white-space: pre-wrap; font-size: .875rem; line-height: 1.55; }
-.bot-turn.you {
+.bot-turn { max-width: 100%; }
+.bot-turn p { margin: 0 0 .5rem; font-size: .875rem; line-height: 1.6; }
+.bot-turn p:last-of-type { margin-bottom: 0; }
+
+.bot-turn.user {
   align-self: flex-end;
   max-width: 85%;
-  background: var(--paper-2);
-  border-radius: var(--radius-s) var(--radius-s) 2px var(--radius-s);
-  padding: .45rem .65rem;
+  background: var(--deep);
+  color: #f1efe6;
+  border-radius: 12px 12px 3px 12px;
+  padding: .42rem .7rem;
 }
-.bot-turn.bot {
-  align-self: flex-start;
-  max-width: 96%;
+.bot-turn.user p { font-size: .84rem; line-height: 1.45; }
+
+.bot-turn.reply {
+  align-self: stretch;
   border-left: 2px solid var(--lime);
-  padding: .45rem .65rem .45rem .7rem;
-  background: var(--paper);
-  border-radius: 0 var(--radius-s) var(--radius-s) 0;
+  padding: .1rem 0 0 .7rem;
+  color: var(--ink);
 }
-.bot-turn.bot.help {
-  background: var(--paper-2);
+
+/* Hanging indent, so a wrapped bullet lines up under its own text. */
+.bot-list { margin: 0 0 .5rem; padding: 0; list-style: none; }
+.bot-list li {
+  position: relative;
+  padding-left: .95rem;
+  margin-bottom: .28rem;
+  font-size: .875rem;
+  line-height: 1.55;
 }
-/* Not uppercased. A defect code is four characters and reads fine shouted; the
-   statutory basis for an appeal is three full sentences, and uppercase mono
-   turned the most trustworthy thing on screen into the least readable. */
+.bot-list li::before {
+  content: "";
+  position: absolute;
+  left: .18rem;
+  top: .58em;
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--deep-2);
+}
+.bot-list li:last-child { margin-bottom: 0; }
+
 .bot-cite {
-  margin-top: .35rem !important;
-  font: 500 .69rem/1.5 var(--mono) !important;
+  margin: .45rem 0 0 !important;
+  font: 500 .68rem/1.5 var(--mono);
   color: var(--muted);
-  letter-spacing: .01em;
-  max-height: 4.6rem;
+  max-height: 4.4rem;
   overflow-y: auto;
+  overflow-wrap: anywhere;
 }
+
 .bot-speak {
-  margin-top: .4rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  margin-top: .5rem;
   background: none;
   border: 1px solid var(--line);
   border-radius: 999px;
-  padding: .2rem .6rem;
-  font-size: .72rem;
-  color: var(--ink-2);
+  padding: .18rem .6rem;
+  font-size: .71rem;
+  color: var(--muted);
 }
 .bot-speak:hover { border-color: var(--deep-2); color: var(--deep-2); }
 
-.bot-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .3rem;
-  flex-shrink: 0;
-  padding: .65rem .9rem .55rem;
-  border-bottom: 1px solid var(--line);
-  background: var(--card);
-}
-.bot-chips button {
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: .28rem .6rem;
-  font-size: .74rem;
-  color: var(--ink-2);
-  text-align: left;
-}
-.bot-chips button:hover { background: var(--paper-2); border-color: var(--line-2); }
-
 .bot-input {
+  flex-shrink: 0;
   display: flex;
   gap: .35rem;
-  flex-shrink: 0;
   padding: .6rem .9rem;
   border-top: 1px solid var(--line);
+  background: var(--card);
 }
 .bot-input input {
-  flex: 1; min-width: 0;
+  flex: 1 1 auto;
+  min-width: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius-s);
   padding: .45rem .6rem;
@@ -2057,6 +2101,7 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 }
 .bot-input input:focus { outline: none; border-color: var(--deep-2); }
 .bot-mic, .bot-send {
+  flex: 0 0 auto;
   border: 1px solid var(--line);
   border-radius: var(--radius-s);
   background: var(--paper);
@@ -2068,15 +2113,22 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 .bot-mic.on { background: var(--rust); border-color: var(--rust); color: #fff; }
 
 .bot-foot {
+  flex-shrink: 0;
   margin: 0;
-  padding: 0 .9rem .7rem;
-  font-size: .68rem;
+  padding: 0 .9rem .65rem;
+  font-size: .67rem;
   line-height: 1.45;
   color: var(--muted);
-  flex-shrink: 0;
 }
+
+/* Indic faces, or the panel falls back to whatever the device ships. */
+.bot-head:lang(kn), .bot-turn:lang(kn), .bot-chips:lang(kn), .bot-foot:lang(kn),
+.bot :lang(kn) { font-family: var(--knda); }
+.bot-head:lang(hi), .bot-turn:lang(hi), .bot-chips:lang(hi), .bot-foot:lang(hi),
+.bot :lang(hi) { font-family: var(--deva); }
 
 @media (max-width: 480px) {
   .orb-label { display: none; }
   .orb { padding: .7rem; }
+  .bot { width: calc(100vw - 1.2rem); }
 }

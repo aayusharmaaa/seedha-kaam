@@ -18,6 +18,35 @@ import { LANGS } from './i18n.js';
 
 const localeFor = (language) => LANGS.find((l) => l.code === language)?.speech || 'en-IN';
 
+/**
+ * Renders one answer as prose.
+ *
+ * The answer engine returns plain text with blank lines between paragraphs and
+ * "• " for list items, because that text also has to survive being read aloud
+ * by a speech synthesiser and pasted into a PDF. Dumping it into a single
+ * white-space:pre-wrap block made every reply a slab. Splitting it here costs
+ * nothing and gives the list items real hanging indents.
+ */
+function Answer({ text }) {
+  const blocks = String(text || '').split(/\n{2,}/).filter(Boolean);
+  return (
+    <>
+      {blocks.map((block, i) => {
+        const lines = block.split('\n');
+        const bullets = lines.filter((l) => l.trimStart().startsWith('•'));
+        if (bullets.length === lines.length) {
+          return (
+            <ul key={i} className="bot-list">
+              {lines.map((line, j) => <li key={j}>{line.replace(/^\s*•\s*/, '')}</li>)}
+            </ul>
+          );
+        }
+        return <p key={i}>{block}</p>;
+      })}
+    </>
+  );
+}
+
 export default function Assistant({ caseData, evaluation }) {
   const { t, language } = useLang();
   const [open, setOpen] = useState(false);
@@ -132,12 +161,17 @@ export default function Assistant({ caseData, evaluation }) {
           </div>
 
           <div className="bot-log" ref={logRef}>
+            {/* The role class is `user`/`reply`, NOT `you`/`bot`. Calling the
+                reply class `bot` collided with `.bot` — the panel's own
+                selector — so every answer inherited position:fixed plus the
+                panel's border, shadow and bottom/right offsets, and rendered as
+                a floating card outside the panel it belonged in. */}
             {turns.map((turn, i) => (
-              <div key={i} className={`bot-turn ${turn.role}`}>
-                <p>{turn.text}</p>
+              <div key={i} className={`bot-turn ${turn.role === 'you' ? 'user' : 'reply'}`}>
+                {turn.role === 'you' ? <p>{turn.text}</p> : <Answer text={turn.text} />}
                 {turn.cite && <p className="bot-cite">{turn.cite}</p>}
-                {turn.role === 'bot' && (
-                  <button className="bot-speak" onClick={() => readAloud(turn.text)}>
+                {turn.role !== 'you' && (
+                  <button type="button" className="bot-speak" onClick={() => readAloud(turn.text)}>
                     {speaking ? t('bot.stop') : t('bot.readAloud')}
                   </button>
                 )}
@@ -163,7 +197,16 @@ export default function Assistant({ caseData, evaluation }) {
                 onClick={dictate}
                 aria-label={t('bot.speak')}
               >
-                {listening ? '■' : '🎙'}
+                {/* The same mic glyph the intake step draws. An emoji here
+                    rendered as an unreadable smudge at 14px. */}
+                {listening ? (
+                  <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2" fill="currentColor" /></svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                    <rect x="9" y="2" width="6" height="12" rx="3" />
+                    <path d="M5 11a7 7 0 0 0 14 0M12 18v4" />
+                  </svg>
+                )}
               </button>
             )}
             <button type="submit" className="bot-send" aria-label={t('bot.send')}>→</button>
