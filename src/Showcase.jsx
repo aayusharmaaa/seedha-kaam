@@ -404,8 +404,7 @@ export default function Showcase({ meta }) {
   useEffect(() => () => { clearTimers(); stopSpeaking(); stopAudio(); }, []);
 
   /* Says what actually ran on this deployment rather than claiming "AI". */
-  const mode = meta?.extraction?.mode;
-  const extractionLabel = mode === 'openai-vision'
+  const extractionLabel = meta?.extraction?.visionFallback
     ? t('show.docsNoteVision').replace('{model}', meta?.extraction?.model || 'a vision model')
     : t('show.docsNoteManual');
 

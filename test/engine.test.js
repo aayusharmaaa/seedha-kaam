@@ -31,9 +31,9 @@ import { evaluateCase, withPassVerdict } from '../server/engine/compliance.js';
 import { DEFECTS, LANGUAGES, explain, ledgerStats } from '../server/engine/ledger.js';
 import { buildPersonaCase, PERSONA_IDS } from '../server/fixtures.js';
 import { resolveJurisdiction, pointInPolygon, CORPORATIONS, GAZETTEER } from '../server/geo/jurisdiction.js';
-import { attachClock, clockStatus, escalationFacts, addDays } from '../server/engine/clock.js';
-import { parseIntakeDeterministic } from '../server/intake.js';
-import { classifyByFileName, coerceFields, fieldTemplate } from '../server/extract.js';
+import { attachClock, clockStatus, escalationFacts, addDays, SERVICE_SLA, ESCALATION_LADDER } from '../server/engine/clock.js';
+import { parseIntakeDeterministic, intakeNeedsModelFallback } from '../server/intake.js';
+import { classifyByFileName, coerceFields, fieldTemplate, extractDocument, extractionMode } from '../server/extract.js';
 
 const TODAY = new Date('2026-08-28T09:00:00+05:30');
 const codes = (result) => result.findings.map((f) => f.code).sort();
@@ -597,6 +597,47 @@ test('intake: an unrelated sentence does not invent a variant', () => {
   assert.ok(result.confidence < 0.3);
 });
 
+test('intake: model fallback only when cues leave the variant open', () => {
+  const clear = parseIntakeDeterministic('Sir naanu appa house-na khata transfer maadbeku. Appa theerikondru. Mane maarbeku. Brookefield alli ide.');
+  assert.equal(clear.variant, 'inheritance');
+  assert.equal(intakeNeedsModelFallback(clear), false, 'a cue hit must stay offline');
+
+  const blank = parseIntakeDeterministic('what is the weather today');
+  assert.equal(intakeNeedsModelFallback(blank), true, 'an unresolved utterance may use the model');
+});
+
+test('extraction: upload defaults to the manual path even when a key could exist', async () => {
+  const prev = process.env.OPENAI_API_KEY;
+  process.env.OPENAI_API_KEY = 'sk-test-not-used';
+  try {
+    const result = await extractDocument({
+      fileName: 'sale-deed-2004.jpg',
+      mimeType: 'image/jpeg',
+      dataUrl: 'data:image/jpeg;base64,AAAA',
+      useVision: false
+    });
+    assert.equal(result.extractionSource, 'manual');
+    assert.equal(result.kind, 'sale_deed');
+    assert.deepEqual(result.fields, {});
+  } finally {
+    if (prev === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = prev;
+  }
+});
+
+test('extraction: meta reports vision as fallback, not the default mode', () => {
+  const prev = process.env.OPENAI_API_KEY;
+  process.env.OPENAI_API_KEY = 'sk-test';
+  try {
+    const mode = extractionMode();
+    assert.equal(mode.mode, 'manual');
+    assert.equal(mode.visionFallback, true);
+  } finally {
+    if (prev === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = prev;
+  }
+});
+
 test('extraction: file names classify conservatively', () => {
   assert.equal(classifyByFileName('sale-deed-2004.pdf').kind, 'sale_deed');
   assert.equal(classifyByFileName('khata-extract.pdf').kind, 'khata_extract');
@@ -957,4 +998,152 @@ test('the background measure reports only clear cases', () => {
   // A hard-edged busy border: alternating black and white blocks.
   assert.equal(plainBackgroundOf(plane(W, H, (x, y) => ((Math.floor(x / 7) + Math.floor(y / 7)) % 2 ? 250 : 5)), W, H), false);
   assert.equal(plainBackgroundOf(plane(20, 20, () => 128), 20, 20), undefined, 'too small to judge');
+});
+
+/* ================================================================== *
+ * 13 · The assistant
+ *
+ * The assistant is the most dangerous surface in the product: a conversational
+ * box sitting next to a verdict, in the one place where "your papers are fine"
+ * would cost someone a wasted trip and the only leverage they had.
+ *
+ * So what is pinned here is not answer quality. It is that no answer is ever
+ * composed — every sentence it returns must be traceable to the ledger, the
+ * evaluation, the jurisdiction resolver or the clock — and that it says it does
+ * not know rather than guessing.
+ * ================================================================== */
+
+const { answer, matchIntent, matchTopic } = await import('../src/assistant.js');
+
+/** The UI scaffolding, stubbed with markers so leakage is visible. */
+const STR = {
+  whatToDo: 'DO:', whoWhere: 'WHO:', fromRulebook: 'RULEBOOK', fromEngine: 'ENGINE', fromJurisdiction: 'JURIS',
+  lastVerified: 'verified', noCheckYet: 'NO_CHECK_YET', noOfficeYet: 'NO_OFFICE_YET', noBlockers: 'NO_BLOCKERS',
+  nothingToFix: 'NOTHING_TO_FIX', nothingMissing: 'NOTHING_MISSING', blockersIntro: 'BLOCKERS:',
+  askWhichOne: 'ASK_WHICH', missingIntro: 'MISSING:', countsLine: '{blocks}/{delays}/{advisory}',
+  howLongAnswer: 'crit={critical} serial={serial} slowest={slowest}',
+  deadlineAnswer: 'days={days} unit={unit} role={role} framework={framework}',
+  appealIntro: 'APPEALS:', appealDrafted: 'DRAFTED', theDayItLapses: 'DAY_ONE', disposedWithin: 'within',
+  days: 'days', contested: 'CONTESTED', feeAnswer: 'FEE_ANSWER', helpAnswer: 'HELP_ANSWER',
+  verdictRefused: 'REFUSED', verdictObjected: 'OBJECTED', verdictReady: 'READY'
+};
+
+const ctxFor = (caseData) => ({ caseData, evaluation: run(caseData), strings: STR });
+
+test('the assistant answers about a specific defect out of the ledger, verbatim', () => {
+  const caseData = buildPersonaCase('lakshmi', { corrected: false });
+  const ctx = ctxFor(caseData);
+  const tax = ctx.evaluation.findings.find((f) => f.code.startsWith('TAX'));
+  assert.ok(tax, 'this fixture is supposed to raise a tax defect');
+
+  const reply = answer('what about the tax receipt', ctx);
+  // Every substantive sentence must be the ledger's own words, not a paraphrase.
+  assert.ok(reply.text.includes(tax.title), 'must use the ledger title');
+  assert.ok(reply.text.includes(tax.why), 'must use the ledger explanation');
+  assert.ok(reply.text.includes(tax.fix), 'must use the ledger fix');
+  assert.ok(reply.cite.includes(tax.code), 'must cite the defect code');
+});
+
+test('it routes a question to the right defect family, in all three languages', () => {
+  const caseData = buildPersonaCase('lakshmi', { corrected: false });
+  const findings = run(caseData).findings;
+  for (const [question, prefix] of [
+    ['the tax receipt', 'TAX'],
+    ['my name is spelt differently', 'NAME'],
+    ['ಕಂದಾಯ ರಸೀದಿ', 'TAX'],
+    ['नाम की वर्तनी', 'NAME'],
+    ['it needs to be attested', 'FMT']
+  ]) {
+    const hit = matchTopic(question, findings);
+    assert.ok(hit && hit.code.startsWith(prefix), `"${question}" should reach ${prefix}, got ${hit?.code}`);
+  }
+});
+
+test('it refuses to answer about a case that has not been checked', () => {
+  const reply = answer('what is wrong with my documents', { caseData: {}, evaluation: null, strings: STR });
+  assert.equal(reply.text, 'NO_CHECK_YET');
+  assert.equal(reply.cite, null, 'an admission of ignorance cites nothing');
+});
+
+test('an unrecognised question falls back to help, never to a guess', () => {
+  const caseData = buildPersonaCase('lakshmi', { corrected: false });
+  for (const nonsense of ['qwertyuiop', 'tell me a joke', 'what is the capital of France', '']) {
+    const reply = answer(nonsense, ctxFor(caseData));
+    assert.equal(reply.text, 'HELP_ANSWER', `"${nonsense}" must not produce a substantive answer`);
+    assert.ok(reply.isHelp);
+  }
+});
+
+test('every answer is traceable — nothing is composed about the case', () => {
+  const caseData = buildPersonaCase('lakshmi', { corrected: false });
+  const ctx = ctxFor(caseData);
+  const corpus = [
+    ...ctx.evaluation.findings.flatMap((f) => [f.title, f.why, f.fix, f.owner, f.where, f.code]),
+    // Scaffolding strings carry {placeholders}; after substitution only their
+    // literal segments survive, so those are what the residue can contain.
+    ...Object.values(STR).flatMap((s) => String(s).split(/\{[a-z]+\}/i)),
+    ...ctx.evaluation.fixPlan.steps.map((s) => s.title),
+    String(ctx.evaluation.counts.blocks), String(ctx.evaluation.counts.delays), String(ctx.evaluation.counts.advisory),
+    String(ctx.evaluation.fixPlan.criticalPathDays), String(ctx.evaluation.fixPlan.serialDays),
+    ctx.evaluation.rulePack,
+    // The statutory facts, taken from the clock module rather than retyped, so
+    // this test cannot pass by agreeing with a copy of the data that has drifted.
+    ...Object.values(SERVICE_SLA['khata-transfer']).map(String),
+    ...ESCALATION_LADDER.flatMap((r) => [r.label, r.addressedToRole, r.basis, String(r.disposalDays), String(r.availableAfterDays)]),
+    '•', '\n', ' ', '—', '-', ':', ',', '.'
+  ];
+
+  for (const q of ['what is wrong', 'how long', 'am i ready', 'what if they delay', 'what do i need', 'how many days does the office have']) {
+    const { text } = answer(q, ctx);
+    // Strip every known-provenance fragment; whatever is left is invention.
+    let residue = text;
+    for (const piece of corpus.sort((a, b) => String(b).length - String(a).length)) {
+      residue = residue.split(String(piece)).join('');
+    }
+    // After every traceable fragment is removed, no WORD may remain. Digits,
+    // whitespace and punctuation are formatting the assistant is allowed to
+    // add; a letter is a claim about the case that nobody wrote.
+    assert.equal(residue.replace(/[\s\d\p{P}\p{S}]/gu, ''), '',
+      `"${q}" produced text that is not traceable to the ledger, the engine or the scaffolding: ${JSON.stringify(residue.slice(0, 120))}`);
+  }
+});
+
+test('a clean case is told it is clean, not sold a problem', () => {
+  const caseData = buildPersonaCase('lakshmi', { corrected: true });
+  const ctx = ctxFor(caseData);
+  assert.equal(ctx.evaluation.counts.blocks, 0, 'the corrected fixture should have no blockers');
+  assert.equal(answer('what is wrong', ctx).text, 'NO_BLOCKERS');
+  assert.equal(answer('what do i still need', ctx).text, 'NOTHING_MISSING');
+});
+
+test('intent matching prefers the longer phrase', () => {
+  assert.equal(matchIntent('how long will this take').id, 'howlong');
+  assert.equal(matchIntent('where do i go').id, 'office');
+  assert.equal(matchIntent('ಎಷ್ಟು ದಿನ ಬೇಕು').id, 'howlong');
+  assert.equal(matchIntent('कहाँ जाना है').id, 'office');
+  assert.equal(matchIntent(''), null);
+  assert.equal(matchIntent('zzzz'), null);
+});
+
+test('every suggestion chip answers its own question, in every language', async () => {
+  // The chips are the questions people actually click, so a chip whose text
+  // does not route to its own intent is a wrong answer served on a plate.
+  // Four of eighteen did exactly that: Kannada inflects ತಪ್ಪು into ತಪ್ಪಾಗಿದೆ,
+  // Hindi writes ग़लत with a nukta (a different codepoint from गलत), and
+  // "how many days does the office have" was being answered by the fix plan
+  // because a shorter phrase outscored a longer, more specific one.
+  const { SUGGESTION_INTENTS, matchIntent } = await import('../src/assistant.js');
+  const fs = await import('node:fs');
+  const src = fs.readFileSync('src/i18n.js', 'utf8');
+
+  for (const lang of ['en', 'kn', 'hi']) {
+    const start = src.indexOf(`  ${lang}: {`);
+    const block = src.slice(start, src.indexOf('\n  },', start));
+    for (const id of SUGGESTION_INTENTS) {
+      const found = block.match(new RegExp(`'bot\.chip\.${id}': '([^']*)'`));
+      assert.ok(found, `${lang} is missing the ${id} chip`);
+      assert.equal(matchIntent(found[1])?.id, id,
+        `${lang} chip "${found[1]}" routes to the wrong answer`);
+    }
+  }
 });

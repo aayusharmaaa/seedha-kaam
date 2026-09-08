@@ -75,6 +75,80 @@ An agent absorbs 1 through 5. This does 1 through 5 with software.
 
 ---
 
+## Recent improvements
+
+Each of these started as something that was quietly wrong rather than missing.
+That is the honest framing: the interesting work was not adding features, it was
+finding the places where the product was already claiming more than it did.
+
+### The engine moved onto the device → [details](#the-engine-runs-on-the-device)
+
+The rule pack's whole dependency closure has no file system, no network and no
+node builtins. It never needed a server. Imported into the bundle instead, and
+**a full check now runs with no signal at all** — verified with every `fetch`
+rejecting: identical verdict, identical defect codes. The documents stop leaving
+the phone to find out whether a khata extract is stale.
+
+Costs 31 KB gzipped, as a deliberately *static* import: lazy-loading it would
+destroy the one property it exists for.
+
+### A model was judging, where the README promised it never did → [details](#physical-quality-is-measured-not-judged)
+
+Three rules read the physical quality of an upload. `FMT-05` wants
+`legibility < 0.6` — a number and a threshold — and nothing produced the
+number, so the vision model was asked to *judge* readability. That was the one
+place a model's opinion reached a rule and moved a verdict.
+
+Replaced with arithmetic over pixels on the device: variance of the Laplacian,
+`FaceDetector`, border deviation, ink density. **The rule pack did not change at
+all.** Measured in-browser, a 4px blur scores 0.111 and is refused; 1.5px scores
+0.674 and passes.
+
+### An assistant that cannot make anything up → [details](#the-assistant-retrieves-it-does-not-compose)
+
+An orb opens a chat panel — typed or spoken, in all three languages. Every
+answer is retrieved from the ledger, the engine, the resolver or the clock.
+Model on the way in, ledger on the way out. A test strips every traceable
+fragment from each answer and asserts **no word survives**.
+
+Building it surfaced five bugs of its own, four of them Indic-specific: `\p{L}`
+excludes combining marks, so `ಕಂದಾಯ` shattered at every matra and matching was
+broken in the two languages the product exists for while English worked fine.
+
+### The submission packet was ordered by nothing
+
+Enclosures printed in case-insertion order under a heading reading *"assemble in
+this order"*. And `missingRequired` already existed in the evaluation and was
+never printed, so a citizen three certificates short got a list that read as
+complete.
+
+Now a canonical filing order, a `NOT IN THIS STACK` block, property identifiers
+on the cover, tick boxes, a declaration, and page numbers — these are physical
+objects that get separated at a counter.
+
+### The citizen's own deadline was not on the paper they carry
+
+`clock.js` already held every number, all marked verified: **30 calendar days
+under the Karnataka Sakala Services Act**, the answerable officer, a three-rung
+appeal ladder. None of it reached either document — the packet left a *blank
+line* for the citizen to write "days allowed" into, as though the notified
+period were something you discover at the counter. It is the entire leverage the
+product is about.
+
+Now in both documents, deliberately: the packet is surrendered at the counter,
+so a citizen who had it only there would hand away the page telling them what
+the office owes them.
+
+### Browser Back destroyed the journey
+
+All eight steps shared one URL, so Back at step six left the case entirely — and
+on a phone, where Back is the primary gesture, that meant losing everything.
+Fixing it surfaced two more: the canonicalising redirect *pushed* history and
+trapped users on step one, and reloading a deep step bounced to the start
+because a child's effect runs before its parent's.
+
+---
+
 ## The architectural commitment
 
 ```
@@ -132,6 +206,48 @@ be fetched when there is no signal, which is the exact moment this exists for.
 The server still re-runs the same evaluation before it will attach a statutory
 clock to a case. Putting the engine on the device makes the check fast and
 private; it does not make the browser the authority.
+
+### The assistant retrieves; it does not compose
+
+A conversational box sitting next to a verdict is the most dangerous place in
+this product for a language model. Everything here rests on *rules decide, the
+model only reads and explains* — and a bot that answers **"so am I okay?"** in
+its own words walks straight through that, in the one place where a reassuring
+hallucination costs somebody a wasted trip and the only leverage they had.
+
+So the assistant splits the loop in half:
+
+| | who does it |
+| --- | --- |
+| Understanding the **question** | a model, eventually — this is what models are good at |
+| Composing the **answer** | never a model. The ledger, the engine, the resolver, the clock |
+
+Someone says *"idu sari illa antha helidru, ee tax receipt yenu maadbeku?"* —
+code-mixed, half-Kannada, pointing at "this" without naming it. Turning that
+into *"asking for the fix for TAX-01"* is genuinely hard. Reading the answer out
+of `explain('TAX-01', 'kn')` is not, and it returns a sentence a person wrote
+with a citation attached. **Model on the way in, ledger on the way out.**
+
+This is the same shape as `intake.js`, where a model interprets a spoken
+sentence and deterministic code decides what it means. Not a new architecture —
+the existing one, used twice.
+
+Today `matchIntent` is pure keyword matching with no model at all, so the
+assistant works offline beside the engine. That is a floor, not a stub: whatever
+is added above it has to keep working with no signal.
+
+Two properties fall out of the split, and both are load-bearing:
+
+- **It cannot hallucinate a verdict.** A test strips every fragment traceable to
+  the ledger, the engine or the UI scaffolding from each answer and asserts that
+  no *word* survives. Punctuation and digits may; a letter would be a claim
+  about someone's case that nobody wrote.
+- **Cost stays flat in population.** Answers are free because they already
+  exist. A generative answer layer would have been the one per-citizen model
+  cost in the product, and unbounded.
+
+When it does not understand, it says so and offers what it does know. It never
+guesses.
 
 ### Physical quality is measured, not judged
 
@@ -256,7 +372,7 @@ transliteration-aware name matching across Kannada, Devanagari and Latin; the
 Verhoeff checksum on Aadhaar-format numbers; code-mixed intake; PDF packet,
 readiness report, first appeal, second appeal and RTI generation; the statutory
 clock with breach detection and staged escalation availability; the friction
-index; browser speech in and out; immediate case deletion; **the compliance
+index; browser speech in and out; immediate case deletion; **an assistant that answers only out of the rulebook**; **the compliance
 engine running in the browser**, so a full check — not merely re-reading an old
 one — works with no network at all and without uploading the documents;
 **pixel-measured legibility, photo and signature checks** replacing what the
@@ -356,6 +472,8 @@ server/
   store.js               in-memory cases with a TTL + the anonymised friction index
 src/
   engine.js              the same rule pack above, imported and run in the browser
+  assistant.js           the assistant's answers — retrieved from the ledger, never written
+  Assistant.jsx          the orb, the panel, voice in and out
   measure.js             Laplacian blur, face, background and ink measurement
   Journey.jsx            the eight-step flow; the step lives in the URL
   ...                    landing, /mocks, /rulebook, /index, i18n, speech

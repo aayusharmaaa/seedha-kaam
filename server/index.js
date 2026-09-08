@@ -11,7 +11,7 @@ import { LANGUAGES, ledgerStats, DEFECTS, explain } from './engine/ledger.js';
 import { RULE_PACK_VERSION, RULES, VARIANTS, DOCUMENT_KINDS, TAX_YEARS_REQUIRED } from './rules/khata-transfer.v1.js';
 import { resolveJurisdiction, GEO_META, GEO_MAP, GAZETTEER } from './geo/jurisdiction.js';
 import { attachClock, clockStatus, escalationFacts, SERVICE_SLA, ESCALATION_LADDER } from './engine/clock.js';
-import { extractDocument, coerceFields, extractionMode, fieldTemplate, FIELD_TEMPLATES, classifyByFileName } from './extract.js';
+import { extractDocument, coerceFields, extractionMode, fieldTemplate, FIELD_TEMPLATES, classifyByFileName, hasOpenAI } from './extract.js';
 import { parseIntake } from './intake.js';
 import { streamPacket, streamReport, streamEscalation } from './pdf.js';
 import { MOCK_REGISTER } from './mocks.js';
@@ -274,6 +274,9 @@ const uploadSchema = z.object({
   sizeBytes: z.number().int().min(0).max(50_000_000).optional(),
   dataUrl: z.string().max(9_000_000).optional(),
   kindHint: z.string().trim().max(60).optional(),
+  // Vision is opt-in fallback. Default upload uses file-name classification +
+  // citizen confirmation; set true only when the citizen asks to read a photo.
+  useVision: z.boolean().optional(),
   // Physical-quality fields measured on the device before upload. These are
   // arithmetic over pixels, not anything a model said, and they take precedence
   // over the extraction for the keys they cover — see MEASURED_FIELDS below.
@@ -363,6 +366,59 @@ app.put('/api/cases/:caseId/documents/:docId', withCase, (req, res) => {
   });
   if (!documents.some((doc) => doc.id === req.params.docId)) return bad(res, 'No such document in this case.', 404);
   ok(res, { case: updateCase(req.params.caseId, { documents }) });
+});
+
+// Vision fallback: re-read an already-uploaded photograph into candidate fields.
+// The primary upload path stays manual; this only runs when the citizen asks.
+app.post('/api/cases/:caseId/documents/:docId/vision', withCase, async (req, res, next) => {
+  try {
+    const parsed = z.object({
+      dataUrl: z.string().min(32).max(9_000_000),
+      kind: z.string().trim().max(60).optional()
+    }).safeParse(req.body || {});
+    if (!parsed.success) return bad(res, 'Send the photograph again to read its fields.');
+
+    const existing = req.caseData.documents.find((doc) => doc.id === req.params.docId);
+    if (!existing) return bad(res, 'No such document in this case.', 404);
+    if (!hasOpenAI()) return bad(res, 'Vision reading is not configured on this deployment.', 503);
+
+    const kind = parsed.data.kind || existing.kind;
+    if (!kind) return bad(res, 'Choose the document type first, then ask to read the photograph.');
+
+    const extracted = await extractDocument({
+      fileName: existing.fileName,
+      mimeType: existing.mimeType || 'image/jpeg',
+      sizeBytes: existing.fileSizeBytes,
+      dataUrl: parsed.data.dataUrl,
+      kindHint: kind,
+      useVision: true
+    });
+
+    const fields = coerceFields(extracted.kind, {
+      ...existing.fields,
+      ...extracted.fields,
+      // Keep any device measurements already attached — they beat transcription.
+      ...(existing.measured || {})
+    });
+
+    const documents = req.caseData.documents.map((doc) => {
+      if (doc.id !== req.params.docId) return doc;
+      return {
+        ...doc,
+        kind: extracted.kind || doc.kind,
+        template: extracted.template || doc.template,
+        fields,
+        rawExtraction: extracted.fields,
+        extractionSource: extracted.extractionSource,
+        extractionModel: extracted.extractionModel || null,
+        extractionNote: extracted.extractionNote,
+        extractionError: extracted.extractionError || null,
+        confirmed: false
+      };
+    });
+
+    ok(res, { case: updateCase(req.params.caseId, { documents }) });
+  } catch (error) { next(error); }
 });
 
 app.delete('/api/cases/:caseId/documents/:docId', withCase, (req, res) => {

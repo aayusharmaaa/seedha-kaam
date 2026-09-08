@@ -3,6 +3,7 @@ import { api, downscaleImage, setStoredCase } from './api.js';
 import { parseIntakeDeterministic } from '../server/intake.js';
 import { canCheckLocally, checkLocally } from './engine.js';
 import { measureImage } from './measure.js';
+import Assistant from './Assistant.jsx';
 // The same classifier the server uses, so the kind we measure against and the
 // kind the document ends up filed as cannot disagree.
 import { classifyByFileName } from '../server/extract.js';
@@ -344,13 +345,19 @@ function OfficeStep({ caseData, setCaseData, onNext, onBack }) {
  * 3 · Documents
  * ================================================================== */
 
-function DocumentCard({ doc, kinds, onSave, onRemove }) {
+function DocumentCard({ doc, kinds, visionFallback, onSave, onRemove, onReadVision }) {
   const { t } = useLang();
   const [open, setOpen] = useState(!doc.confirmed && doc.extractionSource !== 'fixture');
   const [draft, setDraft] = useState(doc.fields || {});
   const [kind, setKind] = useState(doc.kind || '');
   const [busy, setBusy] = useState(false);
+  const [reading, setReading] = useState(false);
   const template = kinds[kind]?.fields || doc.template || [];
+
+  useEffect(() => {
+    setDraft(doc.fields || {});
+    setKind(doc.kind || '');
+  }, [doc.id, doc.fields, doc.kind]);
 
   const save = async () => {
     setBusy(true);
@@ -358,10 +365,20 @@ function DocumentCard({ doc, kinds, onSave, onRemove }) {
     finally { setBusy(false); }
   };
 
+  const readVision = async () => {
+    if (!onReadVision || !doc._dataUrl || !kind) return;
+    setReading(true);
+    try {
+      await onReadVision(doc.id, { dataUrl: doc._dataUrl, kind });
+    } finally {
+      setReading(false);
+    }
+  };
+
   const sourceLabel = {
     'openai-vision': `${t('docs.readBy')} ${doc.extractionModel || 'a vision model'}`,
     'citizen-confirmed': t('docs.readByYou'),
-    manual: 'Needs your confirmation',
+    manual: t('docs.needsConfirm'),
     fixture: 'Synthetic demo document'
   }[doc.extractionSource] || doc.extractionSource;
 
@@ -427,6 +444,11 @@ function DocumentCard({ doc, kinds, onSave, onRemove }) {
           </div>
 
           <div className="doc-actions">
+            {visionFallback && doc._dataUrl && (
+              <Button kind="secondary" onClick={readVision} busy={reading} disabled={!kind || reading}>
+                {t('docs.readVision')}
+              </Button>
+            )}
             <Button kind="secondary" onClick={save} busy={busy} disabled={!kind}>{t('common.save')}</Button>
             <Button kind="ghost" onClick={() => onRemove(doc.id)}>{t('common.remove')}</Button>
           </div>
@@ -464,14 +486,29 @@ function DocumentsStep({ caseData, setCaseData, meta, kinds, onNext, onBack }) {
           // was reaching a rule. Arithmetic over pixels answers them instead.
           if (dataUrl) measured = await measureImage(dataUrl, classifyByFileName(file.name).kind);
         }
+        // Upload stays on the offline path (classify + confirm). Vision is only
+        // requested later if the citizen taps “Read from photo”.
         const result = await api.addDocument(caseData.id, {
           fileName: file.name,
           mimeType: file.type || 'application/octet-stream',
           sizeBytes: file.size,
           dataUrl,
-          measured
+          measured,
+          useVision: false
         });
-        setCaseData(result.case);
+        const nextCase = result.case;
+        if (dataUrl && result.document?.id) {
+          nextCase.documents = (nextCase.documents || []).map((doc) => (
+            doc.id === result.document.id ? { ...doc, _dataUrl: dataUrl } : doc
+          ));
+        }
+        setCaseData(nextCase);
+        // Keep the photo only in memory for the vision fallback — sessionStorage
+        // cannot hold multi‑MB data URLs.
+        setStoredCase({
+          ...nextCase,
+          documents: (nextCase.documents || []).map(({ _dataUrl, ...rest }) => rest)
+        });
       } catch (e) { setError(`${file.name}: ${e.message}`); }
     }
     setUploading('');
@@ -493,8 +530,31 @@ function DocumentsStep({ caseData, setCaseData, meta, kinds, onNext, onBack }) {
     const result = await api.removeDocument(caseData.id, docId);
     setCaseData(result.case);
   };
+  const readVision = async (docId, body) => {
+    setError('');
+    try {
+      const existing = (caseData.documents || []).find((d) => d.id === docId);
+      const result = await api.readDocumentVision(caseData.id, docId, body);
+      const nextCase = result.case;
+      // Keep the session-only image so they can re-try the fallback.
+      if (existing?._dataUrl) {
+        nextCase.documents = (nextCase.documents || []).map((doc) => (
+          doc.id === docId ? { ...doc, _dataUrl: existing._dataUrl } : doc
+        ));
+      }
+      setCaseData(nextCase);
+      setStoredCase({
+        ...nextCase,
+        documents: (nextCase.documents || []).map(({ _dataUrl, ...rest }) => rest)
+      });
+    } catch (e) {
+      setError(e.message);
+      throw e;
+    }
+  };
 
   const unconfirmed = (caseData.documents || []).filter((d) => !d.confirmed && d.extractionSource !== 'fixture');
+  const visionFallback = Boolean(meta?.extraction?.visionFallback);
 
   return (
     <article className="card wide">
@@ -547,17 +607,27 @@ function DocumentsStep({ caseData, setCaseData, meta, kinds, onNext, onBack }) {
         )}
       </div>
 
-      {uploading && <Spinner label={`Reading ${uploading}…`} />}
+      {uploading && <Spinner label={`Adding ${uploading}…`} />}
       {error && <Notice tone="error">{error}</Notice>}
       {meta?.extraction && (
         <p className="extraction-mode">
-          Extraction mode on this deployment: <code>{meta.extraction.mode}</code>{meta.extraction.model ? ` (${meta.extraction.model})` : ''}. {meta.extraction.note}
+          Extraction mode on this deployment: <code>{meta.extraction.mode}</code>
+          {meta.extraction.visionFallback ? ' · vision fallback available' : ''}
+          {meta.extraction.model ? ` (${meta.extraction.model})` : ''}. {meta.extraction.note}
         </p>
       )}
 
       <div className="doc-list">
         {(caseData.documents || []).map((doc) => (
-          <DocumentCard key={doc.id} doc={doc} kinds={kinds} onSave={saveDoc} onRemove={removeDoc} />
+          <DocumentCard
+            key={doc.id}
+            doc={doc}
+            kinds={kinds}
+            visionFallback={visionFallback}
+            onSave={saveDoc}
+            onRemove={removeDoc}
+            onReadVision={readVision}
+          />
         ))}
         {!caseData.documents?.length && <p className="empty">Nothing added yet.</p>}
       </div>
@@ -1080,6 +1150,12 @@ export default function Journey({ caseData, setCaseData, meta, route, navigate, 
         {step === 'clock' && <ClockStep caseData={caseData} setCaseData={setCaseData} onNext={next} onBack={back} />}
         {step === 'done' && <DoneStep caseData={caseData} evaluation={evaluation} onRestart={onRestart} />}
       </main>
+
+      {/* Available at every step, because the question a citizen has is rarely
+          about the screen they happen to be looking at. It answers from
+          whatever exists yet — and says so plainly when a step has not been
+          reached rather than inventing an answer for it. */}
+      <Assistant caseData={caseData} evaluation={evaluation} />
     </div>
   );
 }

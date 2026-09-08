@@ -129,12 +129,22 @@ Return JSON:
 You classify intent only. You never decide anything about documents, eligibility or process.`;
 
 /**
- * Full intake. The deterministic result is authoritative for any field it filled
- * confidently; the model may only fill blanks and add the English gloss.
+ * When cues already resolved the transfer kind, stay offline. The model is only
+ * a fallback for utterances the cue lists did not recognise.
+ */
+export function intakeNeedsModelFallback(deterministic) {
+  if (!deterministic) return false;
+  return !deterministic.variant || deterministic.confidence < 0.4;
+}
+
+/**
+ * Full intake. Deterministic cues always run first and win on every field they
+ * fill. OpenAI is called only when those cues leave the variant unresolved (or
+ * confidence is very low) — gap-fill and an English gloss, never an override.
  */
 export async function parseIntake(utterance = '') {
   const deterministic = parseIntakeDeterministic(utterance);
-  if (!process.env.OPENAI_API_KEY || !utterance.trim()) {
+  if (!process.env.OPENAI_API_KEY || !utterance.trim() || !intakeNeedsModelFallback(deterministic)) {
     return { ...deterministic, modelAssisted: false };
   }
 

@@ -17,14 +17,15 @@
  *
  * Two extraction paths exist, and the app always tells the user which one ran:
  *
- *   openai-vision  a key is configured — fields are read from the image
- *   manual         no key, or the file is not an image — we classify the
- *                  document by name and ask the citizen to confirm the handful
- *                  of fields the rules actually need
+ *   manual         the default — classify by file name, measure pixels on the
+ *                  device, and ask the citizen to confirm the handful of fields
+ *                  the rules actually need
+ *   openai-vision  optional fallback — only when the citizen asks to read a
+ *                  photograph and a key is configured
  *
- * The second path is not a degraded fallback we are embarrassed by. On a 2G
- * connection, typing six fields is faster than uploading a 3 MB photo, and it
- * is the path that works in a CSC kiosk with no connectivity budget.
+ * Manual is not a degraded path. On a 2G connection, typing six fields is
+ * faster than waiting on a vision round-trip, and it is what works in a CSC
+ * kiosk with no connectivity budget. The model still never decides a rule.
  */
 
 const OPENAI_ENDPOINT = 'https://api.openai.com/v1/chat/completions';
@@ -34,8 +35,18 @@ const OPENAI_TIMEOUT_MS = Number(process.env.OPENAI_TIMEOUT_MS || 25_000);
 export const hasOpenAI = () => Boolean(process.env.OPENAI_API_KEY);
 
 export const extractionMode = () => (hasOpenAI()
-  ? { mode: 'openai-vision', model: OPENAI_MODEL, note: 'Fields are read from uploaded images by an OpenAI vision model, then shown to you for confirmation before any rule runs.' }
-  : { mode: 'manual', model: null, note: 'No vision model is configured on this deployment, so documents are classified by file name and you confirm the fields yourself. The compliance engine is identical either way.' });
+  ? {
+      mode: 'manual',
+      model: OPENAI_MODEL,
+      visionFallback: true,
+      note: 'Documents are classified by file name and you confirm the fields. A vision model is available as a fallback if you ask it to read a photograph — every value is still shown to you before any rule runs.'
+    }
+  : {
+      mode: 'manual',
+      model: null,
+      visionFallback: false,
+      note: 'No vision model is configured on this deployment, so documents are classified by file name and you confirm the fields yourself. The compliance engine is identical either way.'
+    });
 
 /* ------------------------------------------------------------------ *
  * Which document is this?
@@ -218,7 +229,7 @@ async function callOpenAI(messages) {
  * Never throws for an extraction failure — a failure downgrades to the manual
  * path and says so, because the citizen still needs to get through the journey.
  */
-export async function extractDocument({ fileName, mimeType, sizeBytes, dataUrl, kindHint }) {
+export async function extractDocument({ fileName, mimeType, sizeBytes, dataUrl, kindHint, useVision = false }) {
   const classified = kindHint ? { kind: kindHint, confidence: 1, basis: 'chosen by the citizen' } : classifyByFileName(fileName);
   const kind = classified.kind;
   const template = fieldTemplate(kind);
@@ -235,7 +246,10 @@ export async function extractDocument({ fileName, mimeType, sizeBytes, dataUrl, 
   };
 
   const isImage = typeof mimeType === 'string' && mimeType.startsWith('image/');
-  if (!hasOpenAI() || !dataUrl || !isImage || !kind) {
+
+  // Primary path: existing offline system — file-name classification + citizen
+  // confirmation. Vision runs only when explicitly requested as a fallback.
+  if (!useVision || !hasOpenAI() || !dataUrl || !isImage || !kind) {
     return {
       ...base,
       extractionSource: 'manual',
@@ -243,9 +257,13 @@ export async function extractDocument({ fileName, mimeType, sizeBytes, dataUrl, 
         ? 'We could not tell what this document is from its file name. Choose the type and confirm the fields.'
         : !isImage
           ? 'Field reading runs on photographs. For a PDF, confirm the fields below yourself — it takes about thirty seconds.'
-          : hasOpenAI()
-            ? 'No image data was sent, so the fields are yours to confirm.'
-            : 'This deployment has no vision model configured. Confirm the fields below yourself.'
+          : useVision && !hasOpenAI()
+            ? 'This deployment has no vision model configured. Confirm the fields below yourself.'
+            : useVision && !dataUrl
+              ? 'No image data was sent, so the fields are yours to confirm.'
+              : hasOpenAI()
+                ? 'Confirm the fields below, or ask the vision fallback to read this photograph.'
+                : 'Confirm the fields below yourself.'
     };
   }
 

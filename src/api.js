@@ -125,6 +125,7 @@ export const api = {
   loadFixtures: (id, body) => request(`/cases/${id}/documents/fixtures`, { method: 'POST', body }).then(syncCase),
   addDocument: (id, body) => request(`/cases/${id}/documents`, { method: 'POST', body, timeout: 60_000 }).then(syncCase),
   updateDocument: (id, docId, body) => request(`/cases/${id}/documents/${docId}`, { method: 'PUT', body }).then(syncCase),
+  readDocumentVision: (id, docId, body) => request(`/cases/${id}/documents/${docId}/vision`, { method: 'POST', body, timeout: 60_000 }).then(syncCase),
   removeDocument: (id, docId) => request(`/cases/${id}/documents/${docId}`, { method: 'DELETE' }).then(syncCase),
 
   check: (id) => request(`/cases/${id}/check`, { method: 'POST', body: {} }).then(syncCase),
