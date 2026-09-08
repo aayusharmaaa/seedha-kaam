@@ -16,7 +16,7 @@
  */
 
 import PDFDocument from 'pdfkit';
-import { formatDate } from './engine/clock.js';
+import { ESCALATION_LADDER, SERVICE_SLA, formatDate } from './engine/clock.js';
 
 const INK = '#12211f';
 const MUTED = '#6a7a75';
@@ -31,6 +31,10 @@ function startDoc(res, filename) {
     // the words and dates that actually appear in a generated appeal rather
     // than only on the byte count. Off in tests, on everywhere else.
     compress: process.env.PDF_NO_COMPRESS !== '1',
+    // Buffered so the last page can be counted before any page is written —
+    // "Page 3" alone does not tell you a sheet is missing, "Page 3 of 5" does,
+    // and these are handed across a counter and passed between desks.
+    bufferPages: true,
     info: { Title: filename, Producer: 'Seedha Kaam (prototype)' }
   });
   res.setHeader('Content-Type', 'application/pdf');
@@ -72,6 +76,46 @@ function kv(doc, label, value) {
   doc.moveDown(0.45);
 }
 
+/**
+ * Stamps every page with a running header and "Page n of N", then ends the
+ * document. Call instead of doc.end().
+ *
+ * A packet is a physical object. It gets separated at a counter, carried
+ * between desks and handed back in a different order, and until now a loose
+ * sheet from page 4 carried nothing saying whose file it belonged to or that
+ * anything was missing.
+ */
+function paginate(doc, { title, subject }) {
+  const range = doc.bufferedPageRange();
+  const left = doc.page.margins.left;
+  const right = doc.page.width - doc.page.margins.right;
+
+  for (let i = range.start; i < range.start + range.count; i += 1) {
+    doc.switchToPage(i);
+    // Writing into the bottom margin would otherwise trip the automatic page
+    // break and add a blank page for every page we number.
+    const keep = doc.page.margins.bottom;
+    doc.page.margins.bottom = 0;
+
+    if (i > range.start) {
+      doc.font('Helvetica').fontSize(7.6).fillColor(MUTED)
+        .text(title, left, 26, { width: right - left - 150, lineBreak: false })
+        .text(subject, right - 150, 26, { width: 150, align: 'right', lineBreak: false });
+      doc.save().strokeColor(RULE).lineWidth(0.6)
+        .moveTo(left, 38).lineTo(right, 38).stroke().restore();
+    }
+
+    doc.font('Helvetica').fontSize(7.6).fillColor(MUTED).text(
+      `Page ${i - range.start + 1} of ${range.count}`,
+      left, doc.page.height - 34, { width: right - left, align: 'center', lineBreak: false }
+    );
+
+    doc.page.margins.bottom = keep;
+  }
+  doc.flushPages();
+  doc.end();
+}
+
 function footer(doc, extra) {
   doc.moveDown(1.2);
   hr(doc);
@@ -94,17 +138,21 @@ function footer(doc, extra) {
  * thing in the packet.
  * ------------------------------------------------------------------ */
 
+// carryOriginal marks the documents a counter commonly asks to see in original
+// alongside the copy — the registered, issued and certified ones. The form, the
+// photograph and the affidavits ARE the originals being submitted, and a
+// utility bill is not something anyone asks to verify.
 const FILING_ORDER = [
   { kind: 'application_form', group: 'Top sheet' },
   { kind: 'photo', group: 'Top sheet' },
-  { kind: 'aadhaar', group: 'Identity' },
-  { kind: 'sale_deed', group: 'Title' },
-  { kind: 'khata_extract', group: 'Current record' },
-  { kind: 'tax_receipt', group: 'Tax clearance' },
-  { kind: 'death_certificate', group: 'Succession' },
-  { kind: 'legal_heir_certificate', group: 'Succession' },
+  { kind: 'aadhaar', group: 'Identity', carryOriginal: true },
+  { kind: 'sale_deed', group: 'Title', carryOriginal: true },
+  { kind: 'khata_extract', group: 'Current record', carryOriginal: true },
+  { kind: 'tax_receipt', group: 'Tax clearance', carryOriginal: true },
+  { kind: 'death_certificate', group: 'Succession', carryOriginal: true },
+  { kind: 'legal_heir_certificate', group: 'Succession', carryOriginal: true },
   { kind: 'noc_affidavit', group: 'Succession' },
-  { kind: 'encumbrance_certificate', group: 'Supporting' },
+  { kind: 'encumbrance_certificate', group: 'Supporting', carryOriginal: true },
   { kind: 'bescom_bill', group: 'Supporting' }
 ];
 
@@ -178,9 +226,9 @@ function buildEnclosureIndex(caseData, evaluation) {
 
   const rows = [];
   const absent = [];
-  for (const { kind, group } of FILING_ORDER) {
+  for (const { kind, group, carryOriginal } of FILING_ORDER) {
     if (present.has(kind)) {
-      rows.push({ label: ENCLOSURE_LABELS[kind] || kind, group, detail: enclosureDetail(kind, docs), present: true });
+      rows.push({ label: ENCLOSURE_LABELS[kind] || kind, group, detail: enclosureDetail(kind, docs), present: true, carryOriginal: Boolean(carryOriginal) });
     } else if (required.has(kind) || recommended.has(kind)) {
       absent.push({ label: ENCLOSURE_LABELS[kind] || kind, group, required: required.has(kind) });
     }
@@ -228,6 +276,62 @@ function enclosureRow(doc, { index, label, detail, group, present }) {
   }
   doc.moveDown(0.34);
   doc.x = left;
+}
+
+/**
+ * What the law allows the office, and what follows when it does not.
+ *
+ * This is the section the whole product exists for. A citizen standing at a
+ * counter who knows the service has a stipulated period, knows which officer
+ * is answerable for it, and knows an appeal exists the day it lapses is a
+ * different citizen from one who does not — and none of that was on the paper
+ * they carried. The clock module already held every one of these numbers; the
+ * packet simply left a blank line for the citizen to write "days allowed" into.
+ *
+ * Everything printed here is marked verified in the SLA table. The caveat is
+ * printed with it rather than dropped, because the quantum on the day is the
+ * one on the acknowledgement slip.
+ */
+function entitlement(doc, service = 'khata-transfer') {
+  const sla = SERVICE_SLA[service];
+  if (!sla) return;
+
+  section(doc, 'What the law allows this office');
+  kv(doc, 'Service as notified', sla.serviceName);
+  kv(doc, 'Stipulated period', `${sla.days} ${sla.unit}, counted from the date on your acknowledgement`);
+  kv(doc, 'Answerable officer', sla.designatedOfficerRole);
+  kv(doc, 'Under', `${sla.framework} (last verified ${sla.lastVerified})`);
+  doc.font('Helvetica').fontSize(9.2).fillColor(MUTED).text(sla.caveat, { lineGap: 1.2 });
+
+  doc.moveDown(0.8);
+  doc.font('Helvetica-Bold').fontSize(10).fillColor(INK).text('If the period lapses and nothing has happened:');
+  doc.moveDown(0.4);
+
+  ESCALATION_LADDER.forEach((rung, i) => {
+    if (doc.y > doc.page.height - 130) doc.addPage();
+    const left = doc.page.margins.left;
+    const width = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+    const top = doc.y;
+    doc.font('Helvetica-Bold').fontSize(10).fillColor(INK)
+      .text(`${i + 1}.  ${rung.label}`, left, top, { width: width - 120 });
+    const afterTitle = doc.y;
+    doc.font('Helvetica').fontSize(8.8).fillColor(MUTED)
+      .text(rung.availableAfterDays === 0
+        ? 'the day it lapses'
+        : `+${rung.availableAfterDays} days`, left + width - 120, top + 1.4, { width: 120, align: 'right' });
+    doc.y = afterTitle;
+    doc.font('Helvetica').fontSize(9.4).fillColor(INK)
+      .text(`To the ${rung.addressedToRole}. To be disposed of within ${rung.disposalDays} days.`, left, doc.y, { width: width - 120, lineGap: 1 });
+    doc.font('Helvetica-Oblique').fontSize(8.4).fillColor(MUTED)
+      .text(rung.basis, left, doc.y, { width: width - 120 });
+    doc.moveDown(0.5);
+    doc.x = left;
+  });
+
+  doc.font('Helvetica').fontSize(9.4).fillColor(INK).text(
+    'You do not have to draft any of these. Enter your acknowledgement number in Seedha Kaam and each one is prepared for you on the day it becomes available, with the dates already counted.',
+    { lineGap: 1.3 }
+  );
 }
 
 /** A ruled line for something that has to be written in by hand. */
@@ -329,6 +433,24 @@ export function streamPacket(res, { caseData, evaluation, jurisdiction, language
     { lineGap: 1.2 }
   );
 
+  /* --- originals -------------------------------------------------- *
+   * The declaration below undertakes to produce originals. Which ones was left
+   * for the citizen to guess, and guessing wrong means a second trip.
+   * ---------------------------------------------------------------- */
+  const originals = rows.filter((row) => row.carryOriginal);
+  if (originals.length) {
+    section(doc, 'Carry the originals of these as well');
+    doc.font('Helvetica').fontSize(9.2).fillColor(MUTED).text(
+      'Counters commonly ask to see the original alongside the copy, and hand it straight back. The copies stay in the file; these do not.',
+      { lineGap: 1.2 }
+    );
+    doc.moveDown(0.5);
+    originals.forEach((row) => enclosureRow(doc, { ...row, detail: '', index: null }));
+  }
+
+  /* --- what the law allows the office ---------------------------- */
+  entitlement(doc);
+
   /* --- declaration ---------------------------------------------- */
   section(doc, 'Declaration');
   doc.font('Helvetica').fontSize(10.2).fillColor(INK).text(
@@ -345,7 +467,10 @@ export function streamPacket(res, { caseData, evaluation, jurisdiction, language
     'Ask for an acknowledgement number and check that it is written on your copy. Without it there is no clock and no appeal.',
     'Ask which service name the application was booked under and how many days it is allowed. Both are printed on the acknowledgement slip.',
     'If you are told the papers are not in order, ask which enclosure and which field. The readiness report names every check that was run and what it found.',
-    'Nothing beyond the notified fee is payable, and the notified fee produces a receipt.'
+    // No number here on purpose: we have not sourced the notified fee for this
+    // service, and inventing one in the document that is supposed to protect
+    // people from being overcharged would be the worst possible place to guess.
+    'Ask what the notified fee is and pay it at the counter that issues a receipt. Money asked for without a receipt is not a fee, whatever it is called.'
   ].forEach((line) => {
     doc.font('Helvetica').fontSize(10.3).fillColor(INK).text('•  ' + line, { lineGap: 1.2 });
     doc.moveDown(0.25);
@@ -358,7 +483,13 @@ export function streamPacket(res, { caseData, evaluation, jurisdiction, language
     { lineGap: 1.2 }
   );
   doc.moveDown(0.7);
-  writeInBox(doc, ['Acknowledgement no.', 'Date of submission', 'Days allowed', 'Received by (counter)']);
+  writeInBox(doc, ['Acknowledgement no.', 'Date of submission', 'Received by (counter)']);
+  // The days are not a blank to be filled in — they are notified, and printed
+  // above. The line to check is whether the slip agrees.
+  doc.font('Helvetica').fontSize(9.2).fillColor(MUTED).text(
+    `The slip should show ${SERVICE_SLA['khata-transfer'].days} ${SERVICE_SLA['khata-transfer'].unit}. If it shows fewer, that is in your favour. If it shows more, ask under which notification.`,
+    { lineGap: 1.2 }
+  );
 
   if (jurisdiction?.candidates?.length > 1) {
     section(doc, 'Alternate office (boundary case)');
@@ -369,7 +500,7 @@ export function streamPacket(res, { caseData, evaluation, jurisdiction, language
   }
 
   footer(doc, 'Generated by Seedha Kaam, an independent prototype. In this demonstration deployment every property record is synthetic. This packet has not been submitted to any office — you file it yourself. Not a government form and not affiliated with any government body.');
-  doc.end();
+  paginate(doc, { title: 'Khata transfer — submission packet', subject: applicant });
 }
 
 /* ------------------------------------------------------------------ *
@@ -493,6 +624,13 @@ export function streamReport(res, { caseData, evaluation }) {
     }
   }
 
+  // The same section appears in the packet. That is deliberate, not an
+  // oversight: the packet is handed across the counter and stays there, so a
+  // citizen who had it only in the packet would have given away the one page
+  // telling them what the office owes them and what to do when it lapses. This
+  // is the copy they walk home with.
+  entitlement(doc);
+
   section(doc, 'How this verdict was reached');
   doc.font('Helvetica').fontSize(10).fillColor(INK).text(
     'A deterministic rule engine evaluated rule pack ' + evaluation.rulePack + ' against the fields in your documents. '
@@ -504,10 +642,18 @@ export function streamReport(res, { caseData, evaluation }) {
     { lineGap: 1.5 }
   );
 
+  // Counted, not asserted. Saying "some requirements are counter practice" and
+  // leaving the reader to tally them is the kind of soft disclosure that reads
+  // as honesty while carrying no information.
+  const cited = evaluation.findings.filter((f) => f.citation);
+  const untraced = cited.filter((f) => !f.citation.verified).length;
+
   section(doc, 'What this report cannot tell you');
   [
     'Offices apply discretion. This reduces the risk of rejection; it cannot remove it.',
-    'Requirements marked as not traced to a published clause are counter practice we could not source. They are flagged as such above rather than presented as law.',
+    untraced
+      ? `${untraced} of the ${cited.length} findings above rest on counter practice we could not trace to a published clause. Each one says so under its own heading. Treat those as what an office is likely to ask for, not as what the law requires.`
+      : 'Every finding above is traced to a published requirement.',
     'A field misread from a photograph and left uncorrected would produce a confident wrong answer. Check the values before relying on this.'
   ].forEach((line) => {
     doc.font('Helvetica').fontSize(9.6).fillColor(INK).text('•  ' + line, { lineGap: 1.2 });
@@ -515,7 +661,7 @@ export function streamReport(res, { caseData, evaluation }) {
   });
 
   footer(doc);
-  doc.end();
+  paginate(doc, { title: 'Document readiness report', subject: caseData.applicant?.name || 'Applicant' });
 }
 
 /* ------------------------------------------------------------------ *

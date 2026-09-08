@@ -685,16 +685,44 @@ async function renderPacket(caseData, evaluation) {
     jurisdiction: { confidence: 'resolved', candidates: [{ corporation: 'Bengaluru East City Corporation', zone: 'Mahadevapura zone', office: 'Assistant Revenue Officer' }] },
     language: 'en'
   });
-  const buffer = await finished;
-  return (buffer.toString('latin1').match(/<[0-9A-Fa-f]{2,}>/g) || [])
-    .map((run) => Buffer.from(run.slice(1, -1), 'hex').toString('latin1'))
-    .join('')
-    .replace(/\s+/g, ' ');
+  return readPdf(await finished);
+}
+
+/** Same, for the readiness report. */
+async function renderReport(caseData, evaluation) {
+  process.env.PDF_NO_COMPRESS = '1';
+  const { Writable } = await import('node:stream');
+  const { streamReport } = await import('../server/pdf.js');
+  const chunks = [];
+  const sink = new Writable({ write(chunk, _enc, cb) { chunks.push(chunk); cb(); } });
+  sink.setHeader = () => {};
+  const finished = new Promise((resolve) => sink.on('finish', () => resolve(Buffer.concat(chunks))));
+  streamReport(sink, { caseData, evaluation });
+  return readPdf(await finished);
+}
+
+/** Recovered words, plus the structure that words alone cannot show. */
+function readPdf(buffer) {
+  const raw = buffer.toString('latin1');
+  const streams = [...raw.matchAll(/stream\r?\n([\s\S]*?)endstream/g)].map((m) => m[1]);
+  return {
+    text: (raw.match(/<[0-9A-Fa-f]{2,}>/g) || [])
+      .map((run) => Buffer.from(run.slice(1, -1), 'hex').toString('latin1'))
+      .join('')
+      .replace(/\s+/g, ' '),
+    pageCount: Number((raw.match(/\/Count\s+(\d+)/) || [])[1] || 0),
+    // Text operations per page. A page that got added by accident — which is
+    // exactly what writing into the bottom margin does — shows up here as a
+    // stream with nothing on it.
+    textOpsPerPage: streams
+      .filter((s) => /BT|Tf/.test(s))
+      .map((s) => (s.match(/TJ|Tj/g) || []).length)
+  };
 }
 
 test('the packet orders enclosures the way an office reads a file', async () => {
   const caseData = buildPersonaCase('lakshmi', { corrected: true });
-  const text = await renderPacket(caseData, run(caseData));
+  const { text } = await renderPacket(caseData, run(caseData));
   const at = (needle) => {
     const i = text.indexOf(needle);
     assert.ok(i >= 0, `"${needle}" is missing from the packet`);
@@ -723,7 +751,7 @@ test('the packet names what is NOT in the stack', async () => {
     ['death_certificate', 'legal_heir_certificate', 'tax_receipt']
   );
 
-  const text = await renderPacket(caseData, evaluation);
+  const { text } = await renderPacket(caseData, evaluation);
   assert.match(text, /NOT IN THIS STACK/, 'a short stack must say so on its face');
   for (const label of ['Property tax receipts (required)', 'Death certificate (required)', 'Legal heir certificate (required)']) {
     // The em-dash separator is one glyph the latin1 recovery above cannot round
@@ -739,10 +767,79 @@ test('repeated documents collapse into one enclosure, with the years in order', 
   const years = caseData.documents.filter((d) => d.kind === 'tax_receipt').map((d) => d.fields.financialYear);
   assert.ok(years.length >= 3, 'this fixture is supposed to carry a run of receipts');
 
-  const text = await renderPacket(caseData, run(caseData));
+  const { text } = await renderPacket(caseData, run(caseData));
   // One line, not one per receipt — and the years ascending, because the thing
   // the counter checks is whether the run is unbroken.
   const sorted = years.slice().sort();
   assert.ok(text.includes(years.length + ' receipts'), 'the receipts are one enclosure carrying a count');
   assert.ok(text.includes(sorted.join(', ')), `expected years in order: ${sorted.join(', ')}`);
+});
+
+test('both documents carry page numbers and no accidental blank pages', async () => {
+  const caseData = buildPersonaCase('lakshmi', { corrected: false });
+  const evaluation = run(caseData);
+  for (const [name, rendered] of [
+    ['packet', await renderPacket(caseData, evaluation)],
+    ['report', await renderReport(caseData, evaluation)]
+  ]) {
+    assert.ok(rendered.pageCount >= 2, `${name} should run to more than one page`);
+    for (let n = 1; n <= rendered.pageCount; n += 1) {
+      assert.ok(rendered.text.includes(`Page ${n} of ${rendered.pageCount}`),
+        `${name} is missing "Page ${n} of ${rendered.pageCount}"`);
+    }
+    // Writing a footer into the bottom margin will happily add a blank page per
+    // page if the margin is not collapsed first. A page with no text is that.
+    assert.equal(rendered.textOpsPerPage.length, rendered.pageCount, `${name}: stream count should match page count`);
+    for (const [i, ops] of rendered.textOpsPerPage.entries()) {
+      assert.ok(ops > 5, `${name} page ${i + 1} has almost nothing on it (${ops} text ops)`);
+    }
+  }
+});
+
+test('the statutory period is stated, not left as a blank to fill in', async () => {
+  const caseData = buildPersonaCase('lakshmi', { corrected: true });
+  const evaluation = run(caseData);
+  const { SERVICE_SLA, ESCALATION_LADDER } = await import('../server/engine/clock.js');
+  const sla = SERVICE_SLA['khata-transfer'];
+
+  // In BOTH documents: the packet is surrendered at the counter, so a citizen
+  // who had this only there would have handed away the page telling them what
+  // the office owes them.
+  for (const [name, rendered] of [
+    ['packet', await renderPacket(caseData, evaluation)],
+    ['report', await renderReport(caseData, evaluation)]
+  ]) {
+    assert.match(rendered.text, new RegExp(`${sla.days} ${sla.unit}`), `${name} must state the stipulated period`);
+    assert.ok(rendered.text.includes(sla.framework), `${name} must name the framework it comes from`);
+    assert.ok(rendered.text.includes(sla.designatedOfficerRole), `${name} must name the answerable role`);
+    for (const rung of ESCALATION_LADDER) {
+      assert.ok(rendered.text.includes(rung.label), `${name} must preview the ${rung.label}`);
+    }
+  }
+});
+
+test('the report counts its own untraced requirements rather than gesturing at them', async () => {
+  const caseData = buildPersonaCase('lakshmi', { corrected: false });
+  const evaluation = run(caseData);
+  const cited = evaluation.findings.filter((f) => f.citation);
+  const untraced = cited.filter((f) => !f.citation.verified).length;
+  assert.ok(untraced > 0, 'this fixture is supposed to raise at least one untraced requirement');
+
+  const { text } = await renderReport(caseData, evaluation);
+  assert.ok(text.includes(`${untraced} of the ${cited.length} findings`),
+    `expected the report to count ${untraced} of ${cited.length}`);
+});
+
+test('the packet says which originals to carry, and never the ones it is keeping', async () => {
+  const caseData = buildPersonaCase('lakshmi', { corrected: true });
+  const { text } = await renderPacket(caseData, run(caseData));
+  const section = text.slice(text.indexOf('CARRY THE ORIGINALS'), text.indexOf('WHAT THE LAW ALLOWS'));
+  assert.ok(section.length > 40, 'the originals section must exist');
+  for (const label of ['Sale deed', 'Khata extract', 'Death certificate']) {
+    assert.ok(section.includes(label), `${label} is issued or registered — its original gets asked for`);
+  }
+  // The form, the photo and the affidavits ARE the originals being handed over.
+  for (const label of ['Signed transfer application', 'Passport photograph', 'No-objection affidavit']) {
+    assert.ok(!section.includes(label), `${label} is submitted as the original — do not ask for it twice`);
+  }
 });
