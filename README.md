@@ -77,75 +77,86 @@ An agent absorbs 1 through 5. This does 1 through 5 with software.
 
 ## Recent improvements
 
-Each of these started as something that was quietly wrong rather than missing.
-That is the honest framing: the interesting work was not adding features, it was
-finding the places where the product was already claiming more than it did.
+These were not missing features. They were places the product was already
+claiming more than it delivered. Fixing that is the interesting work.
 
-### The engine moved onto the device → [details](#the-engine-runs-on-the-device)
+### The engine runs on your phone
 
-The rule pack's whole dependency closure has no file system, no network and no
-node builtins. It never needed a server. Imported into the bundle instead, and
-**a full check now runs with no signal at all** — verified with every `fetch`
-rejecting: identical verdict, identical defect codes. The documents stop leaving
-the phone to find out whether a khata extract is stale.
+→ [How it works](#the-engine-runs-on-the-device) · [`src/engine.js`](src/engine.js) · [commit](https://github.com/aayusharmaaa/seedha-kaam/commit/636165e)
 
-Costs 31 KB gzipped, as a deliberately *static* import: lazy-loading it would
-destroy the one property it exists for.
+The rule pack never needed a server — no filesystem, no network, no Node
+builtins. We were still shipping documents off the phone to check them.
 
-### A model was judging, where the README promised it never did → [details](#physical-quality-is-measured-not-judged)
+Now the same modules load in the browser. A full check runs with the network
+cut: same verdict, same defect codes. About 31 KB gzipped, imported statically
+on purpose — lazy-loading it would break the one moment it exists for: no
+signal.
 
-Three rules read the physical quality of an upload. `FMT-05` wants
-`legibility < 0.6` — a number and a threshold — and nothing produced the
-number, so the vision model was asked to *judge* readability. That was the one
-place a model's opinion reached a rule and moved a verdict.
+### We stopped asking a model to judge blur
 
-Replaced with arithmetic over pixels on the device: variance of the Laplacian,
-`FaceDetector`, border deviation, ink density. **The rule pack did not change at
-all.** Measured in-browser, a 4px blur scores 0.111 and is refused; 1.5px scores
-0.674 and passes.
+→ [How it works](#physical-quality-is-measured-not-judged) · [`src/measure.js`](src/measure.js) · [commit](https://github.com/aayusharmaaa/seedha-kaam/commit/636165e)
 
-### An assistant that cannot make anything up → [details](#the-assistant-retrieves-it-does-not-compose)
+Three format rules need physical quality. `FMT-05` wants a legibility score
+below 0.6. Nothing produced that number, so the vision model was asked to
+*decide* if a scan was readable. That was the one place a model opinion could
+move a verdict — while the README said the opposite.
 
-An orb opens a chat panel — typed or spoken, in all three languages. Every
-answer is retrieved from the ledger, the engine, the resolver or the clock.
-Model on the way in, ledger on the way out. A test strips every traceable
-fragment from each answer and asserts **no word survives**.
+Pixels do the work now: Laplacian variance, face detection, border deviation,
+ink density. The rule pack did not change. In the browser, a 4px blur scores
+0.111 and fails; 1.5px scores 0.674 and passes.
 
-Building it surfaced five bugs of its own, four of them Indic-specific: `\p{L}`
-excludes combining marks, so `ಕಂದಾಯ` shattered at every matra and matching was
-broken in the two languages the product exists for while English worked fine.
+### An Ask button that cannot invent answers
 
-### The submission packet was ordered by nothing
+→ [How it works](#the-assistant-retrieves-it-does-not-compose) · [`src/assistant.js`](src/assistant.js) · [commit](https://github.com/aayusharmaaa/seedha-kaam/commit/7b00ca0)
 
-Enclosures printed in case-insertion order under a heading reading *"assemble in
-this order"*. And `missingRequired` already existed in the evaluation and was
-never printed, so a citizen three certificates short got a list that read as
-complete.
+The orb opens a small panel — type or speak, in Kannada, Hindi, or English.
+Every reply is pulled from the ledger, the engine, the office resolver, or the
+clock. Nothing is generated. A test strips every known fragment out of each
+answer and checks that **no word is left**.
 
-Now a canonical filing order, a `NOT IN THIS STACK` block, property identifiers
-on the cover, tick boxes, a declaration, and page numbers — these are physical
-objects that get separated at a counter.
+Building it found five bugs of its own. Four were Indic: `\p{L}` skips
+combining marks, so `ಕಂದಾಯ` broke at every matra. Matching worked in English
+and failed in the two languages this product is for.
 
-### The citizen's own deadline was not on the paper they carry
+### The packet was lying about order — and about what you had
 
-`clock.js` already held every number, all marked verified: **30 calendar days
-under the Karnataka Sakala Services Act**, the answerable officer, a three-rung
-appeal ladder. None of it reached either document — the packet left a *blank
-line* for the citizen to write "days allowed" into, as though the notified
-period were something you discover at the counter. It is the entire leverage the
-product is about.
+→ [`server/pdf.js`](server/pdf.js) · [commit](https://github.com/aayusharmaaa/seedha-kaam/commit/d2e02c8)
 
-Now in both documents, deliberately: the packet is surrendered at the counter,
-so a citizen who had it only there would hand away the page telling them what
-the office owes them.
+Enclosures printed in whatever order you uploaded them, under a heading that
+said *assemble in this order*. That order meant nothing. Worse:
+`missingRequired` already lived in the evaluation and never reached the PDF —
+so someone three certificates short got a stack that looked finished.
 
-### Browser Back destroyed the journey
+Now: a real filing order, a **NOT IN THIS STACK** block, PID / khata / survey
+on the cover, tick boxes, a declaration, page numbers. These pages get pulled
+apart at a counter; they have to survive that.
 
-All eight steps shared one URL, so Back at step six left the case entirely — and
-on a phone, where Back is the primary gesture, that meant losing everything.
-Fixing it surfaced two more: the canonicalising redirect *pushed* history and
-trapped users on step one, and reloading a deep step bounced to the start
-because a child's effect runs before its parent's.
+### Sakala was in the code and missing from the paper
+
+→ [`server/engine/clock.js`](server/engine/clock.js) · [commit](https://github.com/aayusharmaaa/seedha-kaam/commit/e53b220)
+
+`clock.js` already knew the numbers — **30 calendar days** under Sakala, who
+answers, the three-rung appeal ladder — all marked verified. Neither PDF
+printed them. The packet even left a blank for “days allowed,” as if you learn
+that at the counter.
+
+You don’t. That period *is* the leverage. It now sits on both documents. The
+packet gets handed over at the counter, so putting the entitlement only there
+would mean giving away the page that says what the office owes you.
+
+### Back used to throw you out of the case
+
+→ [`src/Journey.jsx`](src/Journey.jsx) · [commit](https://github.com/aayusharmaaa/seedha-kaam/commit/e71dd52)
+
+All eight steps shared one URL. On a phone, Back is how you navigate — and at
+step six it left the case entirely.
+
+Fixing that turned up two more traps: a “canonical” redirect that *pushed*
+history and bounced you forward onto step one, and a reload of a deep step that
+sent you to start because a child effect ran before its parent. Steps now live
+in the URL (`#/case/check`, and so on). A case with a clock resumes on the
+clock step — the one journey that spans days was the one restarting from
+scratch.
 
 ---
 

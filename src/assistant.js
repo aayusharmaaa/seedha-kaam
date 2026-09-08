@@ -208,7 +208,10 @@ function describeFinding(finding, strings) {
  *   the evaluation, whose findings are already in that language.
  */
 export function answer(question, ctx = {}) {
-  const { caseData = {}, evaluation = null, strings = {}, language = 'en' } = ctx;
+  // `= {}` only fills an UNDEFINED argument, and on the landing page there is a
+  // real null here — no case has been started. Every read below must therefore
+  // be optional, or "where do I go?" throws instead of answering.
+  const { caseData, evaluation = null, strings = {}, language = 'en' } = ctx;
   const findings = evaluation?.findings || [];
   const sla = SERVICE_SLA['khata-transfer'];
 
@@ -226,7 +229,15 @@ export function answer(question, ctx = {}) {
 
   const intent = matchIntent(question);
 
-  if (!evaluation && intent?.id !== 'help' && intent?.id !== 'office') {
+  // Only questions ABOUT THIS CASE need a check to have run. The statutory
+  // period, the appeal ladder and what you should be paying are facts about the
+  // service, true before anyone uploads anything — and they are precisely the
+  // questions someone has on the landing page, before committing to eight
+  // steps. Blacklisting two intents instead of whitelisting four made the
+  // assistant answer "run the check first" to every question asked outside a
+  // case, which is useless exactly where it is most needed.
+  const NEEDS_EVALUATION = new Set(['verdict', 'blockers', 'howlong', 'missing']);
+  if (!evaluation && NEEDS_EVALUATION.has(intent?.id)) {
     return { text: strings.noCheckYet, cite: null };
   }
 
@@ -269,9 +280,9 @@ export function answer(question, ctx = {}) {
     }
 
     case 'office': {
-      const office = caseData.jurisdiction?.candidates?.[0];
+      const office = caseData?.jurisdiction?.candidates?.[0];
       if (!office) return { text: strings.noOfficeYet, cite: null };
-      const extra = caseData.jurisdiction?.confidence === 'contested' ? `\n\n${strings.contested}` : '';
+      const extra = caseData?.jurisdiction?.confidence === 'contested' ? `\n\n${strings.contested}` : '';
       return {
         text: `${office.office}\n${office.zone}, ${office.corporation}${extra}`,
         cite: strings.fromJurisdiction

@@ -1147,3 +1147,39 @@ test('every suggestion chip answers its own question, in every language', async 
     }
   }
 });
+
+test('the statutory questions answer without a case, the case questions do not', async () => {
+  // The orb sits on the landing page too, where there is no case at all. The
+  // period the office gets, the appeal ladder and what you should pay are facts
+  // about the service and must answer there — those are the questions someone
+  // has BEFORE committing to eight steps. Only questions about a particular
+  // case may say "run the check first".
+  const { answer } = await import('../src/assistant.js');
+  const strings = { ...STR };
+  const noCase = { caseData: {}, evaluation: null, strings };
+
+  for (const q of ['how many days does the office have', 'what if they delay it', 'what should i pay', 'what can you do']) {
+    assert.notEqual(answer(q, noCase).text, 'NO_CHECK_YET',
+      `"${q}" is answerable without a case and must not be deferred`);
+  }
+  for (const q of ['what is wrong', 'how long will this take', 'am i ready', 'what do i still need']) {
+    assert.equal(answer(q, noCase).text, 'NO_CHECK_YET',
+      `"${q}" is about a specific case and must not be guessed at`);
+  }
+});
+
+test('the assistant survives a null case, which is what the landing page passes', async () => {
+  // `= {}` in a destructure only fills an UNDEFINED argument. On the landing
+  // page there is a real null — no case started — so every read has to be
+  // optional. It was not, and "where do I go?" threw a TypeError inside the
+  // click handler: no answer appeared and the previous one stayed on screen,
+  // which looks exactly like the wrong answer rather than a crash.
+  const { answer } = await import('../src/assistant.js');
+  for (const caseData of [null, undefined, {}]) {
+    for (const q of ['where do i go', 'what should i pay', 'what if they delay it', 'hello']) {
+      assert.doesNotThrow(() => answer(q, { caseData, evaluation: null, strings: STR }),
+        `caseData=${JSON.stringify(caseData)} question="${q}"`);
+    }
+  }
+  assert.equal(answer('where do i go', { caseData: null, evaluation: null, strings: STR }).text, 'NO_OFFICE_YET');
+});

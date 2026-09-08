@@ -4,6 +4,7 @@ import { FALLBACK_META } from './demo-meta.js';
 import { warmVoices } from './speech.js';
 import Landing, { PersonaPicker } from './Landing.jsx';
 import Journey from './Journey.jsx';
+import Assistant from './Assistant.jsx';
 import { MocksPage, RulebookPage } from './Pages.jsx';
 import { LanguageProvider, MockBanner, Notice, OfflineBar, Spinner, landingSectionForRoute, useHashRoute, useLang } from './ui.jsx';
 
@@ -85,46 +86,64 @@ function Shell() {
   };
 
   const landingSection = landingSectionForRoute(route);
+  const inCase = route.startsWith('/case');
 
-  if (route.startsWith('/register')) return <MocksPage />;
-  if (route.startsWith('/ledger')) return <RulebookPage />;
+  const content = (() => {
+    if (route.startsWith('/register')) return <MocksPage />;
+    if (route.startsWith('/ledger')) return <RulebookPage />;
 
-  if (route.startsWith('/start') || route.startsWith('/personas')) {
+    if (route.startsWith('/start') || route.startsWith('/personas')) {
+      return (
+        <>
+          {error && <div className="page"><Notice tone="error">{error}</Notice></div>}
+          <PersonaPicker meta={meta} onStart={start} starting={starting} />
+        </>
+      );
+    }
+
+    if (inCase) {
+      if (resuming && !caseData) {
+        return <main className="page"><Spinner label="Opening your case…" /></main>;
+      }
+      if (!caseData) return <CaseGate />;
+      // The journey owns which of its steps the route names; it just needs the
+      // route and a way to change it, so that Back walks the steps rather than
+      // leaving the case altogether.
+      return (
+        <Journey
+          caseData={caseData}
+          setCaseData={setCaseData}
+          meta={meta}
+          route={route}
+          navigate={navigate}
+          onExit={exit}
+          onRestart={restart}
+        />
+      );
+    }
+
     return (
       <>
         {error && <div className="page"><Notice tone="error">{error}</Notice></div>}
-        <PersonaPicker meta={meta} onStart={start} starting={starting} />
+        <Landing meta={meta} onStart={start} starting={starting} focusSection={landingSection || undefined} />
       </>
     );
-  }
-
-  if (route.startsWith('/case')) {
-    if (resuming && !caseData) {
-      return <main className="page"><Spinner label="Opening your case…" /></main>;
-    }
-    if (!caseData) {
-      return <CaseGate />;
-    }
-    // The journey owns which of its steps the route names; it just needs the
-    // route and a way to change it, so that Back walks the steps rather than
-    // leaving the case altogether.
-    return (
-      <Journey
-        caseData={caseData}
-        setCaseData={setCaseData}
-        meta={meta}
-        route={route}
-        navigate={navigate}
-        onExit={exit}
-        onRestart={restart}
-      />
-    );
-  }
+  })();
 
   return (
     <>
-      {error && <div className="page"><Notice tone="error">{error}</Notice></div>}
-      <Landing meta={meta} onStart={start} starting={starting} focusSection={landingSection || undefined} />
+      {content}
+      {/* The orb belongs on every page, not only inside a case. Mounted only in
+          the journey it was invisible until you had already committed to eight
+          steps — which is exactly backwards, because the questions people have
+          before they start (how many days does the office get, what happens if
+          they sit on it, what am I supposed to pay) are the ones the assistant
+          can answer without a case at all.
+
+          Inside the journey, Journey mounts its own with the live evaluation
+          from the on-device check, which can be newer than the copy on the case
+          when the network is down. So this one stands down there. */}
+      {!inCase && <Assistant caseData={caseData} evaluation={caseData?.lastEvaluation || null} />}
     </>
   );
 }
