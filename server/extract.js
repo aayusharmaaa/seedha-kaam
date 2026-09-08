@@ -170,10 +170,15 @@ Return exactly this JSON shape:
   "fields": {
 ${fields}
   },
-  "legibility": number between 0 and 1 describing how readable the scan is,
   "pageCount": number of pages visible in this image or null,
   "notes": short string describing anything that was unreadable, or null
-}`;
+}
+
+Transcribe only. Report a field as null when you cannot read it — never infer
+it, and never assess the quality of the image itself. How legible a scan is,
+whether a signature block was signed and whether a photograph meets the
+specification are measured from the pixels on the citizen's device, not judged
+here.`;
 }
 
 async function callOpenAI(messages) {
@@ -264,7 +269,9 @@ export async function extractDocument({ fileName, mimeType, sizeBytes, dataUrl, 
     for (const [key, value] of Object.entries(fields)) {
       if (allowed.has(key) && value !== undefined) cleaned[key] = value;
     }
-    if (typeof result.legibility === 'number') cleaned.legibility = Math.max(0, Math.min(1, result.legibility));
+    // result.legibility is dropped on purpose even when the model returns it.
+    // It is measured from the pixels, and a second opinion here could only ever
+    // disagree with the measurement or duplicate it.
     if (typeof result.pageCount === 'number') cleaned.pageCount = result.pageCount;
 
     return {
@@ -316,9 +323,11 @@ export function coerceFields(kind, raw = {}) {
         out[field.key] = String(value).trim();
     }
   }
-  if (typeof raw.legibility === 'number') out.legibility = raw.legibility;
   if (typeof raw.pageCount === 'number') out.pageCount = raw.pageCount;
   if (typeof raw.expectedPageCount === 'number') out.expectedPageCount = raw.expectedPageCount;
-  if (typeof raw.signaturePresent === 'boolean') out.signaturePresent = raw.signaturePresent;
+  // legibility and signaturePresent are deliberately NOT carried through from
+  // the extraction any more. They are measured from the pixels (src/measure.js)
+  // and written in by the upload route. A model that volunteers them anyway is
+  // ignored here rather than left to race the measurement.
   return out;
 }

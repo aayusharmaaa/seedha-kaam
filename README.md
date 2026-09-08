@@ -79,10 +79,11 @@ An agent absorbs 1 through 5. This does 1 through 5 with software.
 ## The architectural commitment
 
 ```
-   MODEL              YOU                ENGINE                LEDGER
-reads a photo  →  confirm every  →  decides,          →  turns the code into
-into fields       value            deterministically      your language
-                                   (46 rules)             (47 codes × 3 languages)
+   MODEL            PIXELS              YOU              ENGINE             LEDGER
+reads a photo  +  measured on   →  confirm every  →  decides,        →  turns the code
+into fields       the device       value             deterministically   into your language
+(transcribes,     (legibility,                       (46 rules,          (47 codes ×
+ never judges)     face, ink)                         in your browser)     3 languages)
 ```
 
 **Rules decide. The model only reads and explains.**
@@ -103,6 +104,76 @@ product for a government portal password or OTP, and no code path that would
 accept one. The citizen submits; we prepare and track. A product built on
 credential automation or screen-scraping a government portal cannot survive its
 own scale, and we are deliberately not making that mistake.
+
+### The engine runs on the device
+
+The rule pack is not behind an API. It is imported into the client bundle and
+evaluated in the browser (`src/engine.js`), because its entire dependency
+closure —
+
+```
+compliance.js → ledger.js
+              → khata-transfer.v1.js → text.js
+```
+
+— has no file system, no network and no node builtins in it. It never needed a
+server; it was written on one first.
+
+|  | before | now |
+| --- | --- | --- |
+| No signal | the check could not run | the check runs |
+| Documents | uploaded to be checked | never leave the phone |
+| Re-check after a fix | a round trip | sub-millisecond |
+
+This costs about **31 KB gzipped** and it is a deliberately *static* import. The
+obvious optimisation — split it into a chunk fetched when the citizen reaches
+the check step — destroys the feature, because a chunk fetched on demand cannot
+be fetched when there is no signal, which is the exact moment this exists for.
+
+The server still re-runs the same evaluation before it will attach a statutory
+clock to a case. Putting the engine on the device makes the check fast and
+private; it does not make the browser the authority.
+
+### Physical quality is measured, not judged
+
+Three rules — `FMT-03`, `FMT-05`, `FMT-06` — read the physical quality of an
+upload rather than anything written on it. They were always shaped correctly:
+
+```js
+f(d, 'legibility') < 0.6        // a number and a threshold
+```
+
+What was missing was anything that produced the number, so the vision model was
+asked for it: *"legibility: number between 0 and 1 describing how readable the
+scan is"*. That is not transcription, it is a judgement — and it was the one
+place in the product where a model's opinion reached a rule and moved a verdict.
+
+`src/measure.js` closes it with arithmetic over pixels, on the citizen's device,
+before anything is uploaded. **The rule pack did not change at all.**
+
+| Field | How it is measured now |
+| --- | --- |
+| `legibility` | variance of the Laplacian, at a fixed 1000px working width |
+| `widthPx` | the image's intrinsic width |
+| `faceVisible` | the browser's `FaceDetector`, where it exists |
+| `plainBackground` | standard deviation of the border band |
+| `signaturePresent` | dark-pixel density in the lower fifth of the page |
+
+The measured values are stripped from the extraction and written in by the
+upload route, so a model that volunteers a legibility score anyway cannot race
+the measurement and win.
+
+**Every one of these is a heuristic, and the design rule is reticence.** A
+measure that is confident when it should not be sends someone to a notary, or a
+photo studio, for nothing. So each returns `undefined` when the pixels are
+ambiguous — a printed footer is not distinguishable from a signature, an absent
+`FaceDetector` is not evidence of a missing face — and `undefined` is not a
+value any rule fires on. Not knowing produces silence, which is correct.
+
+The calibration is honest guesswork from the shape of the measure, not values
+fitted to a corpus of real Bengaluru khata scans. Tuning them against such a
+corpus is the highest-value work available on that file, and until it happens
+`FMT-05` is a strong hint rather than a verdict.
 
 ---
 
@@ -155,7 +226,7 @@ That is intentional for reviewers and judges:
 
 | Variable | Status | What still works without it |
 |---|---|---|
-| `OPENAI_API_KEY` | **Not set** | Document upload via manual field confirmation; file-name classification; identical compliance engine |
+| `OPENAI_API_KEY` | **Not set** | Document upload via manual field confirmation; file-name classification; identical compliance engine; **all pixel measurement, which never used the model** |
 | `OPENAI_MODEL` | **Not set** | Defaults to `gpt-4o-mini` only if a key is added locally |
 | Everything else | Defaults | Full demo journey: intake cues, jurisdiction, check, PDFs, clock, appeals |
 
@@ -186,7 +257,11 @@ transliteration-aware name matching across Kannada, Devanagari and Latin; the
 Verhoeff checksum on Aadhaar-format numbers; code-mixed intake; PDF packet,
 readiness report, first appeal, second appeal and RTI generation; the statutory
 clock with breach detection and staged escalation availability; the friction
-index; browser speech in and out; offline PWA behaviour; immediate case deletion.
+index; browser speech in and out; immediate case deletion; **the compliance
+engine running in the browser**, so a full check — not merely re-reading an old
+one — works with no network at all and without uploading the documents;
+**pixel-measured legibility, photo and signature checks** replacing what the
+vision model used to be asked to judge.
 
 **Mocked or absent:** every property record is synthetic; nothing is submitted to
 any office; there is no payment flow at all; corporation boundaries are
@@ -280,10 +355,21 @@ server/
   pdf.js                 packet, report, appeals, RTI
   mocks.js               the mock register
   store.js               in-memory cases with a TTL + the anonymised friction index
-src/                     React client — landing, journey, /mocks, /rulebook, /index
-test/engine.test.js      the CI gate
+src/
+  engine.js              the same rule pack above, imported and run in the browser
+  measure.js             Laplacian blur, face, background and ink measurement
+  Journey.jsx            the eight-step flow; the step lives in the URL
+  ...                    landing, /mocks, /rulebook, /index, i18n, speech
+public/sw.js             precaches the bundle, because the bundle is the engine
+test/engine.test.js      the CI gate — rules, ledger, PDFs, measurement
 scripts/smoke.mjs        end-to-end journey over HTTP
 ```
+
+Note that `src/engine.js` and `src/measure.js` sit on opposite sides of the same
+commitment. The engine is the part that decides and it is deterministic; the
+measurement is the part that observes and it is arithmetic. Neither is a model.
+The model appears once, upstream of both, turning pixels into candidate text
+that the citizen confirms before any of this runs.
 
 ---
 

@@ -1,29 +1,49 @@
 /**
  * Service worker.
  *
- * The offline goal here is specific and small: once a citizen has run their
- * check, the findings and the fix instructions must stay readable when the
- * connection drops. Someone standing outside a corporation office on a bad
- * signal should still be able to see which document is wrong and where to get
- * the replacement.
+ * The offline goal used to be small: keep the findings from the last check
+ * readable when the connection drops. It is bigger now. The rule pack is
+ * compiled into the app bundle and evaluated in the browser (src/engine.js),
+ * so a citizen with no signal at all can attach documents, run a NEW check and
+ * get a full verdict with every fix — not merely re-read an old one.
  *
- * So: the app shell is precached, GET API responses are cached
- * stale-while-revalidate, and any API request that fails offline returns a
- * readable JSON error rather than an unhandled rejection. Mutating requests
- * are never cached and never queued — silently replaying a submission later
- * would be worse than failing now.
+ * What that changes here: the bundle is no longer just an asset, it is the
+ * engine, so it is precached by name rather than left to be picked up
+ * opportunistically on first fetch. Missing it would mean the offline promise
+ * held only for people who had already loaded the page twice.
+ *
+ * The rest stands: GET API responses are cached stale-while-revalidate, and any
+ * API request that fails offline returns a readable JSON error rather than an
+ * unhandled rejection. Mutating requests are never cached and never queued —
+ * silently replaying a submission later would be worse than failing now.
  */
 
-const VERSION = 'seedha-v6';
+const VERSION = 'seedha-v7';
 const SHELL = `${VERSION}-shell`;
 const DATA = `${VERSION}-data`;
 
 const SHELL_URLS = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg'];
 
+/**
+ * The hashed bundle carries the rule engine, so it has to be in the cache
+ * before the first time the network is gone — not merely after a second visit.
+ * Its name changes on every build, so it is read out of index.html rather than
+ * hard-coded, which would go stale on the very next deploy.
+ */
+async function precacheShell(cache) {
+  await cache.addAll(SHELL_URLS);
+  try {
+    const html = await (await cache.match('/index.html'))?.text();
+    if (!html) return;
+    const assets = [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+\.(?:js|css))"/g)].map((m) => m[1]);
+    if (assets.length) await cache.addAll(assets);
+  } catch { /* the opportunistic handler below is still there as a fallback */ }
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(SHELL)
-      .then((cache) => cache.addAll(SHELL_URLS))
+      .then((cache) => precacheShell(cache))
       .then(() => self.skipWaiting())
       .catch(() => self.skipWaiting())
   );
@@ -102,7 +122,7 @@ async function staleWhileRevalidate(request) {
     JSON.stringify({
       error: 'You are offline, and this answer is not in your device cache yet.',
       offline: true,
-      recover: 'Anything already on screen — including every fix and where to get it — stays readable. Reconnect to run a new check.'
+      recover: 'The compliance check itself does not need the network — it runs on this device, and your documents are not uploaded to run it. Reconnect only to save the case and download the PDFs.'
     }),
     { status: 503, headers: { 'Content-Type': 'application/json' } }
   );

@@ -843,3 +843,118 @@ test('the packet says which originals to carry, and never the ones it is keeping
     assert.ok(!section.includes(label), `${label} is submitted as the original — do not ask for it twice`);
   }
 });
+
+/* ================================================================== *
+ * 12 · Measurement
+ *
+ * FMT-03, FMT-05 and FMT-06 read the physical quality of an upload. Those
+ * values used to come from the vision model, which meant a language model's
+ * opinion reached a rule and changed a verdict. They are arithmetic over
+ * pixels now, and this is the arithmetic.
+ *
+ * The property that matters most here is not accuracy, it is RETICENCE: a
+ * measure that is confident when it should not be sends a citizen to a notary
+ * or a photo studio for nothing. Every function must return undefined rather
+ * than guess, and the rules must stay silent when it does.
+ * ================================================================== */
+
+const { legibilityOf, signatureInkOf, plainBackgroundOf } = (await import('../src/measure.js')).__internals;
+
+/** A grayscale plane built by a function of (x, y). */
+const plane = (w, h, fn) => {
+  const g = new Float32Array(w * h);
+  for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) g[y * w + x] = fn(x, y);
+  return g;
+};
+
+test('legibility separates a sharp page from a blurred one', () => {
+  const W = 260, H = 260;
+  // Alternating 2px bars: the highest spatial frequency a document can carry.
+  const bars = (x) => (Math.floor(x / 2) % 2 ? 245 : 15);
+
+  /** A real box blur of those bars — the thing a shaky phone camera does. */
+  const blurred = (radius) => {
+    const src = plane(W, H, bars);
+    const out = new Float32Array(W * H);
+    for (let y = 0; y < H; y += 1) {
+      for (let x = 0; x < W; x += 1) {
+        let sum = 0, n = 0;
+        for (let k = -radius; k <= radius; k += 1) {
+          const xx = x + k;
+          if (xx < 0 || xx >= W) continue;
+          sum += src[y * W + xx]; n += 1;
+        }
+        out[y * W + x] = sum / n;
+      }
+    }
+    return out;
+  };
+
+  const sharp = legibilityOf(plane(W, H, bars), W, H);
+  const soft = legibilityOf(blurred(14), W, H);   // text still there, no longer readable
+  const flat = legibilityOf(plane(W, H, () => 250), W, H);   // blank paper
+
+  assert.ok(sharp > 0.6, `sharp text must clear the FMT-05 threshold, got ${sharp}`);
+  assert.ok(soft < 0.6, `blurred text must fall below it, got ${soft}`);
+  assert.ok(flat < soft, `blank paper carries less detail than blurred text, got ${flat} vs ${soft}`);
+  assert.ok(sharp > soft && soft > flat, 'the measure must be monotone in detail');
+});
+
+test('legibility is stable in [0,1] and refuses to answer for a thumbnail', () => {
+  for (const f of [() => 0, () => 255, (x, y) => (x * y) % 256]) {
+    const v = legibilityOf(plane(120, 120, f), 120, 120);
+    assert.ok(v >= 0 && v <= 1, `out of range: ${v}`);
+  }
+  assert.equal(legibilityOf(plane(8, 8, () => 100), 8, 8), undefined,
+    'too small to measure means undefined, not a confident zero');
+});
+
+test('the signature measure only speaks when the band is unambiguous', () => {
+  const W = 400, H = 600;
+  const bandStart = Math.floor(H * 0.8);
+
+  // Nothing at all in the lower fifth: that is a signature block left empty.
+  assert.equal(signatureInkOf(plane(W, H, () => 250), W, H), false);
+
+  // A solid mark across the band.
+  assert.equal(signatureInkOf(plane(W, H, (x, y) => (y > bandStart + 20 && y < bandStart + 70 && x > 40 && x < 300 ? 20 : 250)), W, H), true);
+
+  // A thin printed footer — a page number, an address line. Not distinguishable
+  // from a signature, so it must say nothing rather than call the page signed.
+  const footer = plane(W, H, (x, y) => (y > H - 6 && x > 150 && x < 250 ? 30 : 250));
+  assert.equal(signatureInkOf(footer, W, H), undefined,
+    'ambiguous ink must not be reported either way');
+});
+
+test('an undefined measurement produces no finding at all', () => {
+  // The whole reticence design rests on this: the rules test for `=== false`
+  // and `typeof === 'number'`, so silence from the measurement layer is silence
+  // in the verdict. If this ever changes, every "cannot tell" becomes a defect.
+  const caseData = buildPersonaCase('lakshmi', { corrected: true });
+  const before = codes(run(caseData));
+
+  const photo = findDoc(caseData, 'photo');
+  photo.fields.faceVisible = undefined;
+  photo.fields.plainBackground = undefined;
+  findDoc(caseData, 'application_form').fields.signaturePresent = undefined;
+  findDoc(caseData, 'sale_deed').fields.legibility = undefined;
+
+  assert.deepEqual(codes(run(caseData)), before,
+    'unmeasurable fields must not change the verdict in either direction');
+});
+
+test('a measured legibility below the threshold does fire, so silence is not the only outcome', () => {
+  const caseData = buildPersonaCase('lakshmi', { corrected: true });
+  assert.ok(!codes(run(caseData)).includes('FMT-05'), 'clean set should not flag legibility');
+
+  findDoc(caseData, 'sale_deed').fields.legibility = 0.11;   // a 4px-blurred phone photo
+  assert.ok(codes(run(caseData)).includes('FMT-05'), 'a real measurement below 0.60 must be caught');
+});
+
+test('the background measure reports only clear cases', () => {
+  const W = 300, H = 300;
+  assert.equal(plainBackgroundOf(plane(W, H, () => 240), W, H), true, 'a uniform backdrop is plain');
+  // A hard-edged busy border: alternating black and white blocks.
+  assert.equal(plainBackgroundOf(plane(W, H, (x, y) => ((Math.floor(x / 7) + Math.floor(y / 7)) % 2 ? 250 : 5)), W, H), false);
+  assert.equal(plainBackgroundOf(plane(20, 20, () => 128), 20, 20), undefined, 'too small to judge');
+});

@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api, downscaleImage, setStoredCase } from './api.js';
 import { parseIntakeDeterministic } from '../server/intake.js';
+import { canCheckLocally, checkLocally } from './engine.js';
+import { measureImage } from './measure.js';
+// The same classifier the server uses, so the kind we measure against and the
+// kind the document ends up filed as cannot disagree.
+import { classifyByFileName } from '../server/extract.js';
 import { LANGS } from './i18n.js';
 import { createRecognizer, recognitionSupported, stopSpeaking } from './speech.js';
 import {
@@ -449,15 +454,22 @@ function DocumentsStep({ caseData, setCaseData, meta, kinds, onNext, onBack }) {
       setUploading(file.name);
       try {
         let dataUrl;
+        let measured;
         if (file.type.startsWith('image/')) {
           const scaled = await downscaleImage(file);
           dataUrl = scaled?.dataUrl;
+          // Measured here, on the device, before anything is sent. These are the
+          // physical-quality fields FMT-03, FMT-05 and FMT-06 read; they used to
+          // be asked of the vision model, which meant a language model's opinion
+          // was reaching a rule. Arithmetic over pixels answers them instead.
+          if (dataUrl) measured = await measureImage(dataUrl, classifyByFileName(file.name).kind);
         }
         const result = await api.addDocument(caseData.id, {
           fileName: file.name,
           mimeType: file.type || 'application/octet-stream',
           sizeBytes: file.size,
-          dataUrl
+          dataUrl,
+          measured
         });
         setCaseData(result.case);
       } catch (e) { setError(`${file.name}: ${e.message}`); }
@@ -595,7 +607,7 @@ function Finding({ finding }) {
 }
 
 function CheckStep({ caseData, setCaseData, evaluation, setEvaluation, meta, onNext, onBack }) {
-  const { t } = useLang();
+  const { t, language } = useLang();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   // MUST sit above the early returns below. Placing it after them changed the
@@ -605,12 +617,26 @@ function CheckStep({ caseData, setCaseData, evaluation, setEvaluation, meta, onN
   const ringPct = useTransitionedValue(evaluation?.score ?? 0);
 
   const run = async () => {
-    setBusy(true); setError('');
+    setError('');
+
+    // Answer from the device first. The rule pack is in this bundle, so this
+    // needs no network and completes before a request would have left the
+    // phone. On a 2G connection in a queue outside an office, this is very
+    // often the only answer the citizen is going to get.
+    const haveLocal = canCheckLocally(caseData);
+    if (haveLocal) setEvaluation(checkLocally(caseData, { language }));
+
+    setBusy(true);
     try {
       const result = await api.check(caseData.id);
       setEvaluation(result.evaluation);
       setCaseData(result.case);
-    } catch (e) { setError(e.message); }
+    } catch (e) {
+      // Nothing to retract: the verdict already on screen came from the same
+      // rule pack over the same case. What failed is only persisting it, and
+      // the server re-runs the check itself before it will attach a clock.
+      if (!haveLocal) setError(e.message);
+    }
     finally { setBusy(false); }
   };
 
@@ -655,6 +681,11 @@ function CheckStep({ caseData, setCaseData, evaluation, setEvaluation, meta, onN
             that applied to your case ({evaluation.scoreBasis.rulesSkipped} did not apply and are not counted).
             Rule pack <code>{evaluation.rulePack}</code>.
           </p>
+          {evaluation.computedOn === 'device' && (
+            <p className="verdict-provenance">
+              {t('check.onDevice')}
+            </p>
+          )}
           <SpeakButton text={`${headline} ${blocking.length} issues will stop you at the counter. ${delaying.length} will come back as an objection.`} />
         </div>
       </div>

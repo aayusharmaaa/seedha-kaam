@@ -273,8 +273,25 @@ const uploadSchema = z.object({
   mimeType: z.string().trim().max(120).optional(),
   sizeBytes: z.number().int().min(0).max(50_000_000).optional(),
   dataUrl: z.string().max(9_000_000).optional(),
-  kindHint: z.string().trim().max(60).optional()
+  kindHint: z.string().trim().max(60).optional(),
+  // Physical-quality fields measured on the device before upload. These are
+  // arithmetic over pixels, not anything a model said, and they take precedence
+  // over the extraction for the keys they cover — see MEASURED_FIELDS below.
+  measured: z.object({
+    legibility: z.number().min(0).max(1).optional(),
+    widthPx: z.number().int().min(0).max(100_000).optional(),
+    heightPx: z.number().int().min(0).max(100_000).optional(),
+    faceVisible: z.boolean().optional(),
+    plainBackground: z.boolean().optional(),
+    signaturePresent: z.boolean().optional(),
+    _method: z.record(z.string(), z.string()).optional()
+  }).optional()
 });
+
+// The keys the device measures. Anything listed here is removed from whatever
+// the extraction produced before the measured value is written in, so a model's
+// guess can never survive alongside a real measurement and win a tie.
+const MEASURED_FIELDS = ['legibility', 'widthPx', 'heightPx', 'faceVisible', 'plainBackground', 'signaturePresent'];
 
 app.post('/api/cases/:caseId/documents', withCase, async (req, res, next) => {
   try {
@@ -283,14 +300,30 @@ app.post('/api/cases/:caseId/documents', withCase, async (req, res, next) => {
     if (req.caseData.documents.length >= 24) return bad(res, 'This case already holds 24 documents, which is more than any counter will read.');
 
     const extracted = await extractDocument(parsed.data);
+
+    // Measurement beats transcription. The model may have offered a legibility
+    // score — it is still asked for nothing of the sort, but a model that
+    // volunteers one must not be able to set it — so every measured key is
+    // stripped from the extraction before the measured values go in.
+    const { _method: measurementMethod, ...measuredValues } = parsed.data.measured || {};
+    const fields = coerceFields(extracted.kind, extracted.fields);
+    if (Object.keys(measuredValues).length) {
+      for (const key of MEASURED_FIELDS) delete fields[key];
+      Object.assign(fields, measuredValues);
+    }
+
     const doc = {
       id: `doc-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
       kind: extracted.kind,
       fileName: extracted.fileName,
       mimeType: extracted.mimeType || null,
       fileSizeBytes: extracted.fileSizeBytes,
-      fields: coerceFields(extracted.kind, extracted.fields),
+      fields,
       rawExtraction: extracted.fields,
+      // Provenance, so "why this answer" can say a number was measured rather
+      // than read. Without this the two are indistinguishable on the far side.
+      measured: Object.keys(measuredValues).length ? measuredValues : null,
+      measurementMethod: measurementMethod || null,
       template: extracted.template,
       classification: extracted.classification,
       extractionSource: extracted.extractionSource,

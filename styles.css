@@ -1862,3 +1862,15 @@ button:disabled { cursor: not-allowed; opacity: .5; }
   .doc-scan { display: none; }
   .sc-ring { transition: none; }
 }
+
+/* Where the verdict was computed. Shown only when the engine answered on the
+   device, because that is the case worth pointing at. */
+.verdict-provenance {
+  margin: .5rem 0 0;
+  padding: .4rem .6rem;
+  border-left: 2px solid var(--lime);
+  background: rgba(201, 231, 85, .1);
+  font-size: .82rem;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
