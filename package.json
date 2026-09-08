@@ -2,15 +2,15 @@
   "name": "seedha-kaam",
   "version": "2.0.0",
   "private": false,
-  "description": "Showcase repo for Build What Moves India — Bengaluru khata transfer pre-flight prototype. No API keys on deploy. Synthetic data only.",
+  "description": "Showcase repo for Build What Moves India — Bengaluru khata transfer pre-flight prototype. Synthetic data only.",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -n web,api -c cyan,green \"vite --host 0.0.0.0\" \"node --watch server/index.js\"",
+    "dev": "concurrently -n web,api -c cyan,green \"vite --host 0.0.0.0\" \"node --env-file=.env --watch server/index.js\"",
     "build": "vite build",
-    "start": "node server/index.js",
+    "start": "node --env-file=.env server/index.js",
     "test": "node --test test/engine.test.js",
     "check": "npm run test && npm run build",
-    "voice": "node scripts/render-voice.mjs"
+    "voice": "node --env-file=.env scripts/render-voice.mjs"
   },
   "engines": {
     "node": ">=20"

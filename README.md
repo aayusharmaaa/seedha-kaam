@@ -10,7 +10,6 @@
 |---|---|
 | **Live demo** | [seedha-kaam.vercel.app](https://seedha-kaam.vercel.app) |
 | **Repository** | [github.com/aayusharmaaa/seedha-kaam](https://github.com/aayusharmaaa/seedha-kaam) |
-| **API keys on deploy** | **None configured** — vision extraction and model-assisted intake are off; the full journey runs on the manual/offline path |
 | **Submission pack** | [`SUBMISSION.md`](SUBMISSION.md) — summary, demo script, reviewer checklist |
 
 ![Seedha Kaam landing page — hero, free office lookup, and demo entry point](docs/screenshot.png)
@@ -221,30 +220,30 @@ and no credentials — there is nothing to log into.
 
 ### API keys on this deployment
 
-**No API keys are set** on the public showcase deployment or in this repository.
-That is intentional for reviewers and judges:
+`OPENAI_API_KEY` and `OPENAI_MODEL` are set as **encrypted Vercel environment
+variables** on production. They are never committed to this repository. `/api/meta`
+reports the live extraction mode (`openai-vision` when the key is present).
 
-| Variable | Status | What still works without it |
+| Variable | Status | Notes |
 |---|---|---|
-| `OPENAI_API_KEY` | **Not set** | Document upload via manual field confirmation; file-name classification; identical compliance engine; **all pixel measurement, which never used the model** |
-| `OPENAI_MODEL` | **Not set** | Defaults to `gpt-4o-mini` only if a key is added locally |
-| Everything else | Defaults | Full demo journey: intake cues, jurisdiction, check, PDFs, clock, appeals |
+| `OPENAI_API_KEY` | **Set on Vercel** (encrypted) | Vision reads uploads into candidate fields; citizen still confirms every value |
+| `OPENAI_MODEL` | **`gpt-4o-mini`** on Vercel | Override locally or in the Vercel dashboard |
+| Without a key | Manual path | File-name classification + citizen-typed fields; **identical** compliance engine; pixel measurement never used the model |
 
-To enable vision extraction locally, copy `.env.example` to `.env` and set
-`OPENAI_API_KEY`. The UI always states which extraction path ran. The model never
-decides compliance — it only proposes field values for you to confirm.
+To run vision locally, copy `.env.example` to `.env` and set `OPENAI_API_KEY`.
+The UI always states which extraction path ran. The model never decides
+compliance — it only proposes field values for you to confirm.
 
-### Optional: vision extraction (local only)
+### Vision extraction
 
-Set `OPENAI_API_KEY` and uploaded photographs are read into candidate field
-values by an OpenAI vision model. **With no key set the product works end to
+With `OPENAI_API_KEY` set, uploaded photographs are read into candidate field
+values by an OpenAI vision model. **With no key the product still works end to
 end**: documents are classified by file name and the citizen confirms the fields
-themselves. The compliance engine is byte-identical either way, and the UI states
-on every document which path ran.
+themselves. The compliance engine is byte-identical either way.
 
-The manual path is not a degraded fallback we are embarrassed by. On a 2G
-connection, typing six fields beats uploading a 3 MB photo, and it is the path
-that works in a CSC kiosk with no connectivity budget.
+The manual path is not a degraded fallback. On a 2G connection, typing six
+fields beats uploading a 3 MB photo, and it is the path that works in a CSC
+kiosk with no connectivity budget.
 
 ---
 
@@ -298,7 +297,7 @@ prototype is built so these are extensions, not rewrites.
 | Area | Today | Future |
 |---|---|---|
 | **Case persistence** | In-memory, 3-hour TTL; lost on serverless cold start unless browser snapshot is sent | Durable store with explicit consent, retention policy aligned to DPDP Act principles, and immediate delete |
-| **Vision extraction** | Manual confirm path (no `OPENAI_API_KEY` on deploy) | Optional OpenAI vision with on-device downscaling; pre-processing for face/signature regions |
+| **Vision extraction** | OpenAI vision when `OPENAI_API_KEY` is set; manual confirm otherwise | On-device downscaling; stronger pre-processing for face/signature regions |
 | **Corporation boundaries** | Hand-drawn approximate envelopes | Official machine-readable GBA/corporation boundary files — geometry code stays the same |
 | **Address geocoding** | Offline gazetteer of 61 localities | Consent-based geocoder with offline fallback for poor connectivity |
 | **Serverless deploy** | Vercel + browser case snapshot workaround | Shared session store (e.g. Vercel KV / Redis) for cross-instance case continuity and PDF generation |
