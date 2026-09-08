@@ -80,63 +80,285 @@ function footer(doc, extra) {
 }
 
 /* ------------------------------------------------------------------ *
- * 1. Submission packet
+ * Filing order
+ *
+ * An office reads a file from the top down, and the order is not arbitrary:
+ * the form first, then who you are, then what proves the property is yours,
+ * then that tax is clear, then the succession chain, then everything that
+ * merely supports. Hand over a stack in a different order and it gets
+ * reshuffled at the counter, and a reshuffled file is one that is set aside.
+ *
+ * This used to emit whatever order the documents happened to sit in inside the
+ * case object — which is insertion order, and means nothing. Telling a citizen
+ * "assemble in this order" against a meaningless order was the least accurate
+ * thing in the packet.
+ * ------------------------------------------------------------------ */
+
+const FILING_ORDER = [
+  { kind: 'application_form', group: 'Top sheet' },
+  { kind: 'photo', group: 'Top sheet' },
+  { kind: 'aadhaar', group: 'Identity' },
+  { kind: 'sale_deed', group: 'Title' },
+  { kind: 'khata_extract', group: 'Current record' },
+  { kind: 'tax_receipt', group: 'Tax clearance' },
+  { kind: 'death_certificate', group: 'Succession' },
+  { kind: 'legal_heir_certificate', group: 'Succession' },
+  { kind: 'noc_affidavit', group: 'Succession' },
+  { kind: 'encumbrance_certificate', group: 'Supporting' },
+  { kind: 'bescom_bill', group: 'Supporting' }
+];
+
+const ENCLOSURE_LABELS = {
+  application_form: 'Signed transfer application',
+  photo: 'Passport photograph',
+  aadhaar: 'Aadhaar (for eKYC)',
+  sale_deed: 'Sale deed',
+  khata_extract: 'Khata extract',
+  tax_receipt: 'Property tax receipts',
+  death_certificate: 'Death certificate',
+  legal_heir_certificate: 'Legal heir certificate',
+  noc_affidavit: 'No-objection affidavit',
+  encumbrance_certificate: 'Encumbrance certificate',
+  bescom_bill: 'Electricity bill'
+};
+
+const docField = (docs, kind, name) => docs.find((d) => d.kind === kind)?.fields?.[name];
+
+/** One line of detail per enclosure, so a clerk can identify it without opening it. */
+function enclosureDetail(kind, docs) {
+  const of = (name) => docField(docs, kind, name);
+  const join = (parts) => parts.filter(Boolean).join(' · ');
+  switch (kind) {
+    case 'sale_deed':
+      return join([of('registrationNumber') && 'Registration ' + of('registrationNumber'),
+        of('executionDate') && 'executed ' + of('executionDate')]);
+    case 'khata_extract':
+      return join([of('khataNumber') && 'Khata ' + of('khataNumber'),
+        of('issuedDate') && 'issued ' + of('issuedDate')]);
+    case 'tax_receipt': {
+      // Sorted, because the thing being checked here is a consecutive run.
+      // Printed in attachment order, 2023-24, 2022-23, 2024-25 reads as a gap
+      // to anyone scanning it, and invites a question that has no basis.
+      const years = docs.filter((d) => d.kind === 'tax_receipt')
+        .map((d) => d.fields?.financialYear).filter(Boolean).sort();
+      return years.length ? years.length + ' receipts — ' + years.join(', ') : '';
+    }
+    case 'death_certificate':
+      return join([of('deceasedName'), of('dateOfDeath') && 'died ' + of('dateOfDeath')]);
+    case 'legal_heir_certificate': {
+      const heirs = of('heirs') || [];
+      return join([of('issuingAuthority'), heirs.length ? heirs.length + ' heirs named' : '']);
+    }
+    case 'noc_affidavit': {
+      const from = docs.filter((d) => d.kind === 'noc_affidavit').map((d) => d.fields?.fromName).filter(Boolean);
+      return from.length ? 'From ' + from.join(', ') : '';
+    }
+    case 'encumbrance_certificate':
+      return of('periodFrom') ? 'Covers ' + of('periodFrom') + ' to ' + of('periodTo') : '';
+    case 'bescom_bill':
+      return join([of('rrNumber') && 'RR ' + of('rrNumber'), of('billMonth')]);
+    case 'aadhaar':
+      return 'Carried for eKYC at the counter. Do not hand the number to anyone offering to process it for you.';
+    default:
+      return '';
+  }
+}
+
+/**
+ * Builds the enclosure index in filing order, collapsing repeats (three tax
+ * receipts are one enclosure with three years named on it, not three anonymous
+ * lines) and — the part that was missing entirely — listing what is NOT in the
+ * stack. A citizen assembling from the old list would have read it as complete.
+ */
+function buildEnclosureIndex(caseData, evaluation) {
+  const docs = caseData.documents || [];
+  const present = new Set(docs.map((d) => d.kind).filter(Boolean));
+  const required = new Set(evaluation?.documents?.missingRequired || []);
+  const recommended = new Set(evaluation?.documents?.missingRecommended || []);
+
+  const rows = [];
+  const absent = [];
+  for (const { kind, group } of FILING_ORDER) {
+    if (present.has(kind)) {
+      rows.push({ label: ENCLOSURE_LABELS[kind] || kind, group, detail: enclosureDetail(kind, docs), present: true });
+    } else if (required.has(kind) || recommended.has(kind)) {
+      absent.push({ label: ENCLOSURE_LABELS[kind] || kind, group, required: required.has(kind) });
+    }
+  }
+
+  // If the rule pack ever grows a document kind that nobody added here, it goes
+  // on the end rather than silently vanishing from the index. An enclosure
+  // dropped off the list is a worse failure than one in an odd position: the
+  // citizen would leave the paper at home.
+  const known = new Set(FILING_ORDER.map((entry) => entry.kind));
+  for (const kind of new Set(docs.map((d) => d.kind).filter((k) => k && !known.has(k)))) {
+    rows.push({ label: ENCLOSURE_LABELS[kind] || kind, group: 'Supporting', detail: '', present: true });
+  }
+
+  return { rows, absent };
+}
+
+/** A drawn box beats a glyph: PDFKit's Helvetica has no ballot character. */
+function enclosureRow(doc, { index, label, detail, group, present }) {
+  if (doc.y > doc.page.height - 130) doc.addPage();
+  const left = doc.page.margins.left;
+  const width = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  const top = doc.y;
+
+  doc.save().rect(left, top + 2.4, 8.5, 8.5).lineWidth(0.9)
+    .strokeColor(present ? '#9aa39a' : '#c9822b').stroke().restore();
+
+  // Absent enclosures carry no number. The number means "position in the file",
+  // and a paper you do not have yet has no position — numbering it invites the
+  // citizen to read the list as nine things they are holding.
+  doc.font('Helvetica-Bold').fontSize(9).fillColor(MUTED)
+    .text(index == null ? '' : String(index).padStart(2, '0'), left + 15, top, { width: 18 });
+
+  doc.font(present ? 'Helvetica' : 'Helvetica-Oblique').fontSize(10.4)
+    .fillColor(present ? INK : '#8a5a12')
+    .text(present ? label : label + '  —  NOT ENCLOSED', left + 36, top, { width: width - 130 });
+  const afterLabel = doc.y;
+
+  doc.font('Helvetica').fontSize(7.4).fillColor(MUTED)
+    .text(group.toUpperCase(), left + width - 92, top + 1.6, { width: 92, align: 'right', characterSpacing: 0.5 });
+
+  doc.y = afterLabel;
+  if (detail) {
+    doc.font('Helvetica').fontSize(8.5).fillColor(MUTED).text(detail, left + 36, doc.y, { width: width - 130 });
+  }
+  doc.moveDown(0.34);
+  doc.x = left;
+}
+
+/** A ruled line for something that has to be written in by hand. */
+function writeInBox(doc, labels, height = 21) {
+  const left = doc.page.margins.left;
+  const width = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  for (const label of labels) {
+    if (doc.y > doc.page.height - 110) doc.addPage();
+    const top = doc.y;
+    doc.font('Helvetica').fontSize(9).fillColor(MUTED).text(label, left, top, { width: 150 });
+    doc.save().moveTo(left + 155, top + 10.5).lineTo(left + width, top + 10.5)
+      .lineWidth(0.7).strokeColor(RULE).stroke().restore();
+    doc.y = top + height;
+    doc.x = left;
+  }
+  doc.moveDown(0.3);
+}
+
+/* ------------------------------------------------------------------ *
+ * 1. Submission packet — the stack you hand across the counter
  * ------------------------------------------------------------------ */
 
 export function streamPacket(res, { caseData, evaluation, jurisdiction, language = 'en' }) {
   const doc = startDoc(res, 'seedha-kaam-submission-packet.pdf');
   const office = jurisdiction?.candidates?.[0];
   const applicant = caseData.applicant?.name || 'Applicant';
+  const docs = caseData.documents || [];
+  const { rows, absent } = buildEnclosureIndex(caseData, evaluation);
 
-  letterhead(doc, 'Khata transfer — submission packet', `Prepared ${formatDate(new Date(), 'en')} for ${applicant}`);
+  letterhead(doc, 'Khata transfer — submission packet',
+    'Prepared ' + formatDate(new Date(), 'en') + ' for ' + applicant);
 
-  section(doc, 'Where to take this');
+  /* --- who, and where it goes ---------------------------------- */
+  section(doc, 'Applicant and office');
+  kv(doc, 'Applicant', applicant);
+  kv(doc, 'Service', caseData.variant === 'sale' ? 'Khata transfer after purchase' : 'Khata transfer after inheritance');
   kv(doc, 'Corporation', office?.corporation || 'Not yet resolved');
-  kv(doc, 'Zone / sub-division', office?.zone || '—');
-  kv(doc, 'Counter', office?.office || '—');
-  kv(doc, 'Property address', caseData.address || '—');
+  kv(doc, 'Zone / sub-division', office?.zone);
+  kv(doc, 'Counter', office?.office);
   if (jurisdiction?.confidence === 'contested') {
-    doc.fillColor('#8a5a12').font('Helvetica-Bold').fontSize(10)
-      .text('This address is close to a corporation boundary. Call this office and quote your property ID before travelling. If the record is not with them, the alternate office is listed at the end of this packet.');
+    doc.fillColor('#8a5a12').font('Helvetica-Bold').fontSize(9.6).text(
+      'Boundary case. Telephone this office and quote the property ID below before travelling. If the record is not with them, the alternate office is named at the end of this packet — you are being redirected, not turned away.',
+      { lineGap: 1.2 }
+    );
     doc.moveDown(0.4).fillColor(INK).font('Helvetica').fontSize(10.5);
   }
 
-  section(doc, 'Enclosures — assemble in this order');
-  const order = [
-    'Signed transfer application (top sheet)',
-    ...(evaluation?.documents?.supplied || []).map((d) => d.label || d.kind)
-  ];
-  order.forEach((item, index) => {
-    doc.font('Helvetica').fontSize(10.5).fillColor(INK).text(`${String(index + 1).padStart(2, '0')}.  ${item}`);
-    doc.moveDown(0.15);
-  });
+  /* --- the identifiers a clerk actually looks the file up by ---- */
+  section(doc, 'Property identification');
+  kv(doc, 'Property ID (PID)', docField(docs, 'khata_extract', 'pid') || docField(docs, 'sale_deed', 'pid'));
+  kv(doc, 'Khata number', docField(docs, 'khata_extract', 'khataNumber'));
+  kv(doc, 'Survey number', docField(docs, 'khata_extract', 'surveyNumber') || docField(docs, 'sale_deed', 'surveyNumber'));
+  const extent = docField(docs, 'khata_extract', 'extentSqFt');
+  kv(doc, 'Extent on record', extent ? extent + ' sq ft' : null);
+  kv(doc, 'Property address', docField(docs, 'khata_extract', 'address') || caseData.address);
 
-  section(doc, 'Pre-flight result');
-  kv(doc, 'Blocking issues outstanding', String(evaluation?.counts?.blocks ?? '—'));
-  kv(doc, 'Issues that may cause an objection', String(evaluation?.counts?.delays ?? '—'));
-  kv(doc, 'Rules applied to this case', `${evaluation?.scoreBasis?.rulesApplied ?? '—'} of ${(evaluation?.scoreBasis?.rulesApplied || 0) + (evaluation?.scoreBasis?.rulesSkipped || 0)} in rule pack ${evaluation?.rulePack || '—'}`);
+  /* --- the index ------------------------------------------------ */
+  section(doc, 'Enclosure index — assemble in this order');
+  doc.font('Helvetica').fontSize(9.2).fillColor(MUTED).text(
+    'Tick each box as you place the paper in the file. The order is the order an office reads a file in: the form, then who you are, then what proves the property is yours, then that tax is clear, then the succession chain, then supporting papers.',
+    { lineGap: 1.2 }
+  );
+  doc.moveDown(0.6);
 
-  if (evaluation?.findings?.length) {
-    section(doc, 'Every check that produced a finding');
-    for (const finding of evaluation.findings) {
-      if (doc.y > doc.page.height - 160) doc.addPage();
-      doc.font('Helvetica-Bold').fontSize(10.5).fillColor(finding.severity === 'blocks' ? '#9a3412' : finding.severity === 'delays' ? '#8a5a12' : MUTED)
-        .text(`${finding.code} · ${finding.severity.toUpperCase()} · ${finding.title}`);
-      doc.font('Helvetica').fontSize(9.6).fillColor(INK).text(finding.why);
-      doc.font('Helvetica-Oblique').fontSize(9).fillColor(MUTED)
-        .text(`Evidence — rule ${finding.ruleId}: ${finding.evidence?.comparison || finding.evidence?.note || '—'}`);
-      doc.moveDown(0.55);
-    }
+  rows.forEach((row, i) => enclosureRow(doc, Object.assign({}, row, { index: i + 1 })));
+
+  if (absent.length) {
+    const req = absent.filter((a) => a.required).length;
+    doc.moveDown(0.5);
+    doc.font('Helvetica-Bold').fontSize(9.8).fillColor('#8a5a12').text(
+      'NOT IN THIS STACK — ' + req + ' required, ' + (absent.length - req) + ' recommended',
+      { characterSpacing: 0.5 }
+    );
+    doc.moveDown(0.35);
+    absent.forEach((row) => enclosureRow(doc, {
+      label: row.label + (row.required ? ' (required)' : ' (recommended)'),
+      group: row.group,
+      detail: '',
+      present: false,
+      index: null
+    }));
   }
 
+  doc.moveDown(0.35);
+  doc.font('Helvetica-Bold').fontSize(10).fillColor(INK).text(
+    rows.length + ' enclosure' + (rows.length === 1 ? '' : 's') + ' in this file'
+    + (absent.length ? ', ' + absent.length + ' still to obtain.' : '.')
+  );
+
+  /* --- summary only; the evidence lives in the report ----------- */
+  section(doc, 'Pre-flight summary');
+  kv(doc, 'Blocking issues outstanding', String(evaluation?.counts?.blocks ?? 0));
+  kv(doc, 'Issues that may draw an objection', String(evaluation?.counts?.delays ?? 0));
+  kv(doc, 'Rules applied to this case',
+    (evaluation?.scoreBasis?.rulesApplied ?? 0) + ' applied, ' + (evaluation?.scoreBasis?.rulesSkipped ?? 0)
+    + ' not applicable · rule pack ' + (evaluation?.rulePack || '—'));
+  doc.font('Helvetica').fontSize(9.2).fillColor(MUTED).text(
+    'Every check, its evidence and its source is set out in the separate readiness report. Carry that one too: it is what answers "your papers are not in order" with a document name and a field.',
+    { lineGap: 1.2 }
+  );
+
+  /* --- declaration ---------------------------------------------- */
+  section(doc, 'Declaration');
+  doc.font('Helvetica').fontSize(10.2).fillColor(INK).text(
+    'I submit the enclosures listed above in support of my application for transfer of khata in respect of the property identified above. The copies enclosed are true copies of the originals, which I am able to produce for verification.',
+    { lineGap: 1.5 }
+  );
+  doc.moveDown(0.9);
+  writeInBox(doc, ['Signature', 'Name in block letters', 'Mobile number', 'Date']);
+
+  /* --- the counter ---------------------------------------------- */
   section(doc, 'At the counter');
   [
-    'Hand over the packet in the order above. Do not let the enclosures be reshuffled.',
-    'Ask for an acknowledgement number and make sure it is written on your copy. Without it you have no clock.',
-    'Ask for the name of the service and the stipulated number of days. It is printed on the acknowledgement slip.',
-    'If you are told the papers are not in order, ask which document and which field. This packet lists every check that was run and what it found.',
-    'You are not required to pay anyone anything beyond the notified fee, and the notified fee has a receipt.'
-  ].forEach((line) => { doc.font('Helvetica').fontSize(10.5).fillColor(INK).text(`•  ${line}`); doc.moveDown(0.25); });
+    'Hand the file over in the order above. If the enclosures come back reshuffled, ask for them back in order.',
+    'Ask for an acknowledgement number and check that it is written on your copy. Without it there is no clock and no appeal.',
+    'Ask which service name the application was booked under and how many days it is allowed. Both are printed on the acknowledgement slip.',
+    'If you are told the papers are not in order, ask which enclosure and which field. The readiness report names every check that was run and what it found.',
+    'Nothing beyond the notified fee is payable, and the notified fee produces a receipt.'
+  ].forEach((line) => {
+    doc.font('Helvetica').fontSize(10.3).fillColor(INK).text('•  ' + line, { lineGap: 1.2 });
+    doc.moveDown(0.25);
+  });
+
+  /* --- the thing that starts the clock -------------------------- */
+  section(doc, 'Write the acknowledgement here');
+  doc.font('Helvetica').fontSize(9.4).fillColor(MUTED).text(
+    'This number is what turns a wait into a right. Enter it in Seedha Kaam and the statutory deadline attaches to it.',
+    { lineGap: 1.2 }
+  );
+  doc.moveDown(0.7);
+  writeInBox(doc, ['Acknowledgement no.', 'Date of submission', 'Days allowed', 'Received by (counter)']);
 
   if (jurisdiction?.candidates?.length > 1) {
     section(doc, 'Alternate office (boundary case)');
@@ -146,17 +368,18 @@ export function streamPacket(res, { caseData, evaluation, jurisdiction, language
     kv(doc, 'Counter', alt.office);
   }
 
-  footer(doc, 'Generated by Seedha Kaam, an independent prototype. In this demonstration deployment all property records are synthetic. This packet has not been submitted to any office — you file it yourself. Not a government form; not affiliated with any government body.');
+  footer(doc, 'Generated by Seedha Kaam, an independent prototype. In this demonstration deployment every property record is synthetic. This packet has not been submitted to any office — you file it yourself. Not a government form and not affiliated with any government body.');
   doc.end();
 }
 
 /* ------------------------------------------------------------------ *
- * 2. Readiness report
+ * 2. Readiness report — the one you keep in your hand
  * ------------------------------------------------------------------ */
 
 export function streamReport(res, { caseData, evaluation }) {
   const doc = startDoc(res, 'seedha-kaam-readiness-report.pdf');
-  letterhead(doc, 'Document readiness report', `${caseData.applicant?.name || 'Applicant'} · rule pack ${evaluation.rulePack} · ${formatDate(new Date(), 'en')}`);
+  letterhead(doc, 'Document readiness report',
+    (caseData.applicant?.name || 'Applicant') + ' · rule pack ' + evaluation.rulePack + ' · ' + formatDate(new Date(), 'en'));
 
   section(doc, 'Verdict');
   const verdictText = {
@@ -165,29 +388,131 @@ export function streamReport(res, { caseData, evaluation }) {
     ready: 'Every applicable check passed. This application is ready to file.'
   }[evaluation.verdict];
   doc.font('Helvetica-Bold').fontSize(13).fillColor(INK).text(verdictText);
-  doc.moveDown(0.5).font('Helvetica').fontSize(10).fillColor(MUTED)
-    .text(`${evaluation.counts.blocks} blocking · ${evaluation.counts.delays} likely objection · ${evaluation.counts.advisory} worth knowing. Readiness ${evaluation.score}%, computed as a severity-weighted pass rate over the ${evaluation.scoreBasis.rulesApplied} rules that applied to this case.`);
+  doc.moveDown(0.5).font('Helvetica').fontSize(10).fillColor(MUTED).text(
+    evaluation.counts.blocks + ' blocking · ' + evaluation.counts.delays + ' likely objection · '
+    + evaluation.counts.advisory + ' worth knowing. Readiness ' + evaluation.score
+    + '%, a severity-weighted pass rate over the ' + evaluation.scoreBasis.rulesApplied
+    + ' rules that applied to this case.',
+    { lineGap: 1.2 }
+  );
 
-  section(doc, 'Findings, with evidence');
-  for (const finding of evaluation.findings) {
-    if (doc.y > doc.page.height - 200) doc.addPage();
-    doc.font('Helvetica-Bold').fontSize(11).fillColor(INK).text(`${finding.code} — ${finding.title}`);
-    doc.font('Helvetica').fontSize(9.5).fillColor(MUTED).text(`${finding.severity} · fix typically takes ${finding.expectedDays} day(s) · ${finding.owner}`);
-    doc.moveDown(0.3).font('Helvetica').fontSize(10.5).fillColor(INK).text(finding.why);
-    doc.moveDown(0.25).font('Helvetica-Bold').fontSize(10).fillColor(INK).text('What to do: ', { continued: true }).font('Helvetica').text(finding.fix);
-    doc.moveDown(0.25).font('Helvetica-Oblique').fontSize(9).fillColor(MUTED)
-      .text(`Why this answer — rule ${finding.ruleId}: ${finding.evidence?.note || ''} ${finding.evidence?.comparison || ''}`);
-    if (finding.citation) {
-      doc.font('Helvetica-Oblique').fontSize(8.5).fillColor(MUTED)
-        .text(`Source: ${finding.citation.source} (last verified ${finding.citation.lastVerified}${finding.citation.verified ? '' : ' — NOT traced to a published clause'})`);
+  /* --- what to do, before what is wrong -------------------------- *
+   * Ordered LONGEST FIRST, not by severity. These fixes do not depend on each
+   * other, so the date you can file is set by the slowest one — which makes the
+   * slowest the one to start today. Ordering by severity would have put a
+   * one-day errand above a three-week certificate and quietly cost the citizen
+   * three weeks. The engine already computes both numbers; the printable
+   * artifact simply never showed them.
+   * -------------------------------------------------------------- */
+  const plan = (evaluation.fixPlan?.steps || []).slice().sort((a, b) => (b.expectedDays || 0) - (a.expectedDays || 0));
+  if (plan.length) {
+    section(doc, 'What to do, slowest first');
+    doc.font('Helvetica').fontSize(9.4).fillColor(MUTED).text(
+      'These do not depend on each other, so start the one at the top today — it is the one that decides when you can file.',
+      { lineGap: 1.2 }
+    );
+    doc.moveDown(0.6);
+
+    plan.forEach((step, i) => {
+      if (doc.y > doc.page.height - 140) doc.addPage();
+      const left = doc.page.margins.left;
+      const width = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+      const top = doc.y;
+      doc.save().rect(left, top + 2.6, 8.5, 8.5).lineWidth(0.9).strokeColor('#9aa39a').stroke().restore();
+      doc.font('Helvetica-Bold').fontSize(10.4).fillColor(INK)
+        .text((i + 1) + '.  ' + step.title, left + 15, top, { width: width - 90 });
+      const afterTitle = doc.y;
+      doc.font('Helvetica-Bold').fontSize(9.4).fillColor(step.severity === 'blocks' ? '#9a3412' : '#8a5a12')
+        .text('~' + step.expectedDays + ' day' + (step.expectedDays === 1 ? '' : 's'),
+          left + width - 66, top + 1.2, { width: 66, align: 'right' });
+      doc.y = afterTitle;
+      doc.font('Helvetica').fontSize(9.6).fillColor(INK).text(step.fix, left + 15, doc.y, { width: width - 90, lineGap: 1 });
+      doc.font('Helvetica-Oblique').fontSize(8.8).fillColor(MUTED)
+        .text(step.owner + ' · ' + step.where, left + 15, doc.y, { width: width - 90 });
+      doc.moveDown(0.55);
+      doc.x = left;
+    });
+
+    doc.font('Helvetica').fontSize(9.8).fillColor(INK).text(
+      'Longest single fix: ' + evaluation.fixPlan.criticalPathDays + ' days. Done one after another instead: '
+      + evaluation.fixPlan.serialDays + ' days. Run them together.'
+    );
+  }
+
+  /* --- findings, grouped by what they cost you ------------------- *
+   * Advisory splits in two, and the split is on expectedDays rather than on
+   * the owner string: a finding that takes zero days to fix is one where there
+   * is nothing to fix, and that is the group we can honestly say we examined
+   * and declined to call a defect. Lumping a "download this month's bill"
+   * suggestion under that heading would have claimed we did not flag something
+   * we plainly did. expectedDays is a number, so the split survives the report
+   * being generated for a case running in Kannada or Hindi; matching on the
+   * owner text would not.
+   * -------------------------------------------------------------- */
+  const advisory = evaluation.findings.filter((f) => f.severity === 'advisory');
+  const groups = [
+    ['What will stop you at the counter', evaluation.findings.filter((f) => f.severity === 'blocks'), null],
+    ['What will come back as an objection', evaluation.findings.filter((f) => f.severity === 'delays'), null],
+    ['Worth doing, though none of it will stop you', advisory.filter((f) => f.expectedDays > 0),
+      'None of these is a defect. Each is a small thing that removes something a counter could argue about.'],
+    ['What we checked and deliberately did NOT call a defect', advisory.filter((f) => !(f.expectedDays > 0)),
+      'A careless check would have called these defects and sent you off for affidavits you do not need. Each was examined and found not to be a problem. That decision matters as much as the ones above.']
+  ];
+
+  for (const [heading, items, note] of groups) {
+    if (!items.length) continue;
+    section(doc, heading);
+    if (note) {
+      doc.font('Helvetica').fontSize(9.4).fillColor(MUTED).text(note, { lineGap: 1.2 });
+      doc.moveDown(0.5);
     }
-    doc.moveDown(0.8);
+    for (const finding of items) {
+      if (doc.y > doc.page.height - 190) doc.addPage();
+      doc.font('Helvetica-Bold').fontSize(11).fillColor(INK).text(finding.code + ' — ' + finding.title);
+      // "fix typically takes 0 day(s)" was printed against findings that need no
+      // fix at all, which reads as a defect with a suspiciously fast remedy.
+      const lead = finding.expectedDays > 0
+        ? 'fix typically takes ' + finding.expectedDays + ' day' + (finding.expectedDays === 1 ? '' : 's') + ' · '
+        : '';
+      doc.font('Helvetica').fontSize(9.5).fillColor(MUTED)
+        .text(lead + finding.owner + ' · ' + finding.where);
+      doc.moveDown(0.3).font('Helvetica').fontSize(10.5).fillColor(INK).text(finding.why, { lineGap: 1.3 });
+      doc.moveDown(0.25).font('Helvetica-Bold').fontSize(10).fillColor(INK)
+        .text('What to do: ', { continued: true }).font('Helvetica').text(finding.fix);
+      doc.moveDown(0.25).font('Helvetica-Oblique').fontSize(9).fillColor(MUTED).text(
+        'Why this answer — rule ' + finding.ruleId + ': ' + (finding.evidence?.note || '')
+        + ' ' + (finding.evidence?.comparison || '')
+      );
+      if (finding.citation) {
+        doc.font('Helvetica-Oblique').fontSize(8.5).fillColor(MUTED).text(
+          'Source: ' + finding.citation.source + ' (last verified ' + finding.citation.lastVerified
+          + (finding.citation.verified ? '' : ' — NOT traced to a published clause') + ')'
+        );
+      }
+      doc.moveDown(0.8);
+    }
   }
 
   section(doc, 'How this verdict was reached');
   doc.font('Helvetica').fontSize(10).fillColor(INK).text(
-    `A deterministic rule engine evaluated rule pack ${evaluation.rulePack} against the fields in your documents. ${evaluation.scoreBasis.rulesApplied} rules applied to this case and ${evaluation.scoreBasis.rulesSkipped} did not (a purchase is not checked for a death certificate, for example). No language model took part in any verdict on this page. A model may have read text off a photograph, but every value it read was shown to you for confirmation before any rule ran.`
+    'A deterministic rule engine evaluated rule pack ' + evaluation.rulePack + ' against the fields in your documents. '
+    + evaluation.scoreBasis.rulesApplied + ' rules applied to this case and ' + evaluation.scoreBasis.rulesSkipped
+    + ' did not — a purchase is not checked for a death certificate, for instance — and rules that do not apply are '
+    + 'excluded from the score rather than counted as passes. No language model took part in any verdict in this '
+    + 'report. A model may have read text off a photograph, but every value it read was shown to you for confirmation '
+    + 'before any rule ran.',
+    { lineGap: 1.5 }
   );
+
+  section(doc, 'What this report cannot tell you');
+  [
+    'Offices apply discretion. This reduces the risk of rejection; it cannot remove it.',
+    'Requirements marked as not traced to a published clause are counter practice we could not source. They are flagged as such above rather than presented as law.',
+    'A field misread from a photograph and left uncorrected would produce a confident wrong answer. Check the values before relying on this.'
+  ].forEach((line) => {
+    doc.font('Helvetica').fontSize(9.6).fillColor(INK).text('•  ' + line, { lineGap: 1.2 });
+    doc.moveDown(0.22);
+  });
 
   footer(doc);
   doc.end();

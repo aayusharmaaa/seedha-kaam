@@ -649,3 +649,100 @@ test('an empty case does not claim to be ready', () => {
   assert.equal(result.submittable, false);
   assert.ok(result.counts.blocks >= 4);
 });
+
+/* ================================================================== *
+ * 11 · The printable packet
+ *
+ * The packet is the only artifact that leaves the building. Every check above
+ * can be right and the citizen still walks into the office with the wrong
+ * stack, because the paper told them something the engine never said.
+ *
+ * These pin the two things the packet used to get wrong: it listed enclosures
+ * in case-insertion order under a heading that said "assemble in this order",
+ * and it never mentioned the documents that were missing — so a complete-
+ * looking list was printed for a case that was three certificates short.
+ * ================================================================== */
+
+/**
+ * Renders a packet to a buffer and recovers the words printed on it.
+ *
+ * PDFKit deflates the page content stream by default, which would leave these
+ * tests asserting on a byte count — a packet that printed nothing at all would
+ * pass. startDoc reads PDF_NO_COMPRESS when the document is constructed, so
+ * setting it here is enough to get plain-text glyph runs back.
+ */
+async function renderPacket(caseData, evaluation) {
+  process.env.PDF_NO_COMPRESS = '1';
+  const { Writable } = await import('node:stream');
+  const { streamPacket } = await import('../server/pdf.js');
+  const chunks = [];
+  const sink = new Writable({ write(chunk, _enc, cb) { chunks.push(chunk); cb(); } });
+  sink.setHeader = () => {};
+  const finished = new Promise((resolve) => sink.on('finish', () => resolve(Buffer.concat(chunks))));
+  streamPacket(sink, {
+    caseData,
+    evaluation,
+    jurisdiction: { confidence: 'resolved', candidates: [{ corporation: 'Bengaluru East City Corporation', zone: 'Mahadevapura zone', office: 'Assistant Revenue Officer' }] },
+    language: 'en'
+  });
+  const buffer = await finished;
+  return (buffer.toString('latin1').match(/<[0-9A-Fa-f]{2,}>/g) || [])
+    .map((run) => Buffer.from(run.slice(1, -1), 'hex').toString('latin1'))
+    .join('')
+    .replace(/\s+/g, ' ');
+}
+
+test('the packet orders enclosures the way an office reads a file', async () => {
+  const caseData = buildPersonaCase('lakshmi', { corrected: true });
+  const text = await renderPacket(caseData, run(caseData));
+  const at = (needle) => {
+    const i = text.indexOf(needle);
+    assert.ok(i >= 0, `"${needle}" is missing from the packet`);
+    return i;
+  };
+  // Identity before title, title before the record, record before tax, tax
+  // before the succession chain, succession before merely supporting papers.
+  assert.ok(at('Aadhaar (for eKYC)') < at('Sale deed'));
+  assert.ok(at('Sale deed') < at('Khata extract'));
+  assert.ok(at('Khata extract') < at('Property tax receipts'));
+  assert.ok(at('Property tax receipts') < at('Death certificate'));
+  assert.ok(at('Death certificate') < at('Legal heir certificate'));
+  assert.ok(at('Legal heir certificate') < at('Encumbrance certificate'));
+});
+
+test('the packet names what is NOT in the stack', async () => {
+  // A real hole rather than a defect: the title and identity are there, the
+  // whole succession chain and the tax run are not.
+  const caseData = buildPersonaCase('lakshmi', { corrected: true });
+  caseData.documents = caseData.documents.filter(
+    (d) => !['tax_receipt', 'death_certificate', 'legal_heir_certificate'].includes(d.kind)
+  );
+  const evaluation = run(caseData);
+  assert.deepEqual(
+    evaluation.documents.missingRequired.slice().sort(),
+    ['death_certificate', 'legal_heir_certificate', 'tax_receipt']
+  );
+
+  const text = await renderPacket(caseData, evaluation);
+  assert.match(text, /NOT IN THIS STACK/, 'a short stack must say so on its face');
+  for (const label of ['Property tax receipts (required)', 'Death certificate (required)', 'Legal heir certificate (required)']) {
+    // The em-dash separator is one glyph the latin1 recovery above cannot round
+    // trip, so match either side of it rather than the whole run.
+    const pattern = new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*.?\\s*NOT ENCLOSED');
+    assert.match(text, pattern, `${label} must be listed as absent`);
+  }
+  assert.match(text, /still to obtain/);
+});
+
+test('repeated documents collapse into one enclosure, with the years in order', async () => {
+  const caseData = buildPersonaCase('lakshmi', { corrected: true });
+  const years = caseData.documents.filter((d) => d.kind === 'tax_receipt').map((d) => d.fields.financialYear);
+  assert.ok(years.length >= 3, 'this fixture is supposed to carry a run of receipts');
+
+  const text = await renderPacket(caseData, run(caseData));
+  // One line, not one per receipt — and the years ascending, because the thing
+  // the counter checks is whether the run is unbroken.
+  const sorted = years.slice().sort();
+  assert.ok(text.includes(years.length + ' receipts'), 'the receipts are one enclosure carrying a count');
+  assert.ok(text.includes(sorted.join(', ')), `expected years in order: ${sorted.join(', ')}`);
+});
